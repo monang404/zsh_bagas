@@ -52,7 +52,14 @@ _ai_breaker_is_open() {
 _ai_chat_diag() {
     # Keep interactive chat clean; set AI_VERBOSE=1 when low-level diagnostics are needed.
     [ "${AI_VERBOSE:-0}" = "1" ] || return 0
-    printf '%s\\n' "$*" >&2
+    # v-fix (same root cause as the spinner /dev/tty fix): callers like
+    # 05-get_plan.zsh redirect the ENTIRE stderr of this call chain to a
+    # temp file (2>"$_gp_errfile") to capture error detail for block_reason.
+    # Writing diag lines to &2 meant AI_VERBOSE=1 was silently swallowed
+    # into that temp file during a hang -- the one time you actually need
+    # to see it live. Write straight to /dev/tty instead, independent of
+    # whatever fd 2 the caller redirected.
+    printf '%s\n' "$*" >/dev/tty 2>/dev/null
 }
 
 _ai_model_label() {

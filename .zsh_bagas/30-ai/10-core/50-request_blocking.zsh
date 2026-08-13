@@ -51,6 +51,8 @@ _ai_chat_request() {
         apikey="${(P)keyvar}"
         [ -z "$apikey" ] && continue   # provider gak dikonfigurasi, skip diam-diam
 
+        _ai_chat_diag "[trace] cek provider $provider..."
+
         if [ "$(_ai_provider_has_fallback "$provider" "$order_str")" = 1 ] && _ai_breaker_is_open "$provider"; then
             _ai_chat_diag "[info] $provider baru aja gagal total <${AI_CIRCUIT_BREAKER_WINDOW:-30} detik lalu (circuit breaker), skip dulu ke provider berikutnya..."
             continue
@@ -87,6 +89,7 @@ _ai_chat_request() {
 
         while [ $tries -lt $AI_MAX_RETRIES ]; do
             _ai_spinner_update "$_spin" "Menghubungi $provider/$model (percobaan $((tries+1)))..."
+            _ai_chat_diag "[trace] bangun payload buat $provider/$model (percobaan $((tries+1)))..."
             local temp
             temp=$(_ai_chat_temp_for_mode "$mode")
             payload=$(_ai_build_chat_payload "$msgfile" "$model" "$max_toks" "$temp" "$is_reasoning_model" 0)
@@ -96,12 +99,15 @@ _ai_chat_request() {
             [ "$curl_timeout" -lt 5 ] && curl_timeout=5
 
             local http_status curl_exit
+            local _diag_t0=$SECONDS
+            _ai_chat_diag "[trace] curl -> $endpoint (max-time ${curl_timeout}s) dikirim..."
             _ai_http_call_blocking "$endpoint" "$apikey" "$payload" "$curl_timeout"
             if [ $? -eq 130 ]; then
                 trap - INT TERM
                 _ai_spinner_stop "$_spin"
                 return 130
             fi
+            _ai_chat_diag "[trace] curl selesai ($((SECONDS - _diag_t0))s) exit=$curl_exit http_status=${http_status:-?}"
 
             if [ "$curl_exit" -eq 28 ]; then
                 _ai_chat_diag "[warn] $provider/$model: request timeout setelah ${curl_timeout}s; lanjut ke model berikutnya..."
