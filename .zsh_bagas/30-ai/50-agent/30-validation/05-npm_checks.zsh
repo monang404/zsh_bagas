@@ -58,12 +58,12 @@ _ai_agent_maybe_run_npm_checks() {
     if [ -n "$test_cmd" ]; then
         out="$out
   \$ npm test
-$(npm test 2>&1 | head -c 2000)"
+$(npm test 2>&1 | _ai_head_c 2000)"
     fi
     if [ -n "$lint_cmd" ]; then
         out="$out
   \$ npm run lint
-$(npm run lint 2>&1 | head -c 2000)"
+$(npm run lint 2>&1 | _ai_head_c 2000)"
     fi
     printf '%s' "$out"
 }

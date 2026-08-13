@@ -18,7 +18,7 @@ _ai_permission_check() {
             # PATH IS MANDATORY for these tools
             path=$(_ai_tool_extract_path "$args_json")
             if [ -z "$path" ]; then
-                echo "ERROR: tool '$tool_name' membutuhkan args.path (string non-empty). Diterima: $(printf '%s' "$args_json" | head -c 200)" >&2
+                echo "ERROR: tool '$tool_name' membutuhkan args.path (string non-empty). Diterima: $(printf '%s' "$args_json" | _ai_head_c 200)" >&2
                 return 1
             fi
             _ai_validate_project_path "$path" "$tool_name" || return 1
@@ -35,11 +35,11 @@ _ai_permission_check() {
             path=$(_ai_tool_extract_path "$args_json")
             dest=$(_ai_tool_extract_field "$args_json" dest destination)
             if [ -z "$path" ]; then
-                echo "ERROR: tool 'move_file' membutuhkan args.path (sumber, string non-empty). Diterima: $(printf '%s' "$args_json" | head -c 200)" >&2
+                echo "ERROR: tool 'move_file' membutuhkan args.path (sumber, string non-empty). Diterima: $(printf '%s' "$args_json" | _ai_head_c 200)" >&2
                 return 1
             fi
             if [ -z "$dest" ]; then
-                echo "ERROR: tool 'move_file' membutuhkan args.dest (tujuan, string non-empty). Diterima: $(printf '%s' "$args_json" | head -c 200)" >&2
+                echo "ERROR: tool 'move_file' membutuhkan args.dest (tujuan, string non-empty). Diterima: $(printf '%s' "$args_json" | _ai_head_c 200)" >&2
                 return 1
             fi
             _ai_validate_project_path "$path" "move_file source" || return 1

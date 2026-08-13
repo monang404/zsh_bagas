@@ -71,7 +71,7 @@ _ai_tool_exec_process() {
         out=$(cd -- "$real_cwd" && "$resolved" "${args[@]}" 2>&1)
         rc=$?
     fi
-    out=$(printf '%s' "$out" | head -c 3000)
+    out=$(printf '%s' "$out" | _ai_head_c 3000)
     if [ "$rc" -eq 0 ]; then
         printf '%s\n' "${out:-OK (exit 0, no output)}"
         return 0
@@ -85,7 +85,7 @@ _ai_tool_run_command() {
     local command
     command=$(_ai_tool_extract_field "$args_json" command cmd)
     if [ -z "$command" ]; then
-        echo "ERROR: run_command membutuhkan args.command (string non-empty). Diterima: $(printf '%s' "$args_json" | head -c 200)"
+        echo "ERROR: run_command membutuhkan args.command (string non-empty). Diterima: $(printf '%s' "$args_json" | _ai_head_c 200)"
         return 1
     fi
 
@@ -102,7 +102,7 @@ _ai_tool_run_command() {
     local out rc
     out=$(zsh -f -c -- "$command" 2>&1)
     rc=$?
-    out=$(printf '%s' "$out" | head -c 3000)
+    out=$(printf '%s' "$out" | _ai_head_c 3000)
 
     if [ $rc -eq 0 ]; then
         if [ -z "$out" ]; then

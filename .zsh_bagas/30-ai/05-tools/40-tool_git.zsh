@@ -18,7 +18,7 @@ _ai_tool_git_status() {
         return 1
     fi
     echo "Branch: $(git branch --show-current 2>/dev/null)"
-    git status --short -b 2>&1 | head -n 100
+    git status --short -b 2>&1 | _ai_head_n 100
 }
 
 _ai_tool_git_diff() {
@@ -44,5 +44,5 @@ _ai_tool_git_diff() {
         echo "OK: gak ada perubahan (git diff kosong)"
         return 0
     fi
-    printf '%s' "$out" | head -c "${AI_GITDIFF_MAX_CHARS:-6000}"
+    printf '%s' "$out" | _ai_head_c "${AI_GITDIFF_MAX_CHARS:-6000}"
 }

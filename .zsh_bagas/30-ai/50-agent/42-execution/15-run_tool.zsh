@@ -19,7 +19,7 @@ _ai_agent_exec_run_tool() {
         _ai_agent_state_transition "$state_dir" BLOCKED 2>/dev/null || true
         return 1
     fi
-    output=$(printf '%s' "$output" | head -c 3000)
+    output=$(printf '%s' "$output" | _ai_head_c 3000)
     commands_run=$((commands_run+1))
 
     # FIX BUG-3: filepath dideklarasikan SEKALI, dipakai untuk

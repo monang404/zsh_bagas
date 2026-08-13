@@ -133,7 +133,7 @@ _ai_chat_request() {
     done
 
     echo "[error: semua provider & model gagal (cek 'ai deps' buat lihat provider mana yang aktif). Raw response terakhir:]" >&2
-    echo "$resp" | jq -c '.error // .' 2>/dev/null | head -c 300 >&2
+    echo "$resp" | jq -c '.error // .' 2>/dev/null | _ai_head_c 300 >&2
     echo "" >&2
     trap - INT TERM
     _ai_spinner_stop "$_spin"

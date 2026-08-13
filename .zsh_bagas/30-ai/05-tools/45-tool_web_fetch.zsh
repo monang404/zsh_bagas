@@ -13,7 +13,7 @@
 _ai_tool_web_fetch() {
     local args_json="$1" url check raw rc text
     url=$(_ai_tool_extract_field "$args_json" url link href)
-    [ -n "$url" ] || { echo "ERROR: web_fetch membutuhkan args.url (string non-empty). Diterima: $(printf '%s' "$args_json" | head -c 200)"; return 1; }
+    [ -n "$url" ] || { echo "ERROR: web_fetch membutuhkan args.url (string non-empty). Diterima: $(printf '%s' "$args_json" | _ai_head_c 200)"; return 1; }
     [[ "$url" == http://* || "$url" == https://* ]] || { echo "ERROR: cuma skema http/https yang diizinkan"; return 1; }
     command -v curl >/dev/null 2>&1 || { echo "ERROR: curl gak ketemu di PATH"; return 1; }
 
@@ -62,5 +62,5 @@ print(raw.strip())
 '
     text=$(printf '%s' "$raw" | python3 -c "$strip_script" 2>/dev/null)
     [ -z "$text" ] && text="(kosong setelah strip HTML -- mungkin bukan halaman HTML biasa)"
-    printf '%s' "$text" | head -c "${AI_WEBFETCH_MAX_CHARS:-8000}"
+    printf '%s' "$text" | _ai_head_c "${AI_WEBFETCH_MAX_CHARS:-8000}"
 }

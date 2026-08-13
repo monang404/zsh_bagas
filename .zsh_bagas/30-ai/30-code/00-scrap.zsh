@@ -46,7 +46,7 @@ for a in soup.find_all('a', href=True):
     if len(text) > 30 and cls not in seen:
         seen.add(cls)
         print('class:', cls, '|', text[:50])
-" 2>/dev/null | head -10)
+" 2>/dev/null | _ai_head_n 10)
     local raw rc reply
     raw=$(_ai_quick "Kamu programmer Python expert. Struktur HTML target: $structure. Tulis kode langsung tanpa backtick. WAJIB pakai baris baru SUNGGUHAN buat pisah tiap statement — JANGAN PERNAH menulis dua karakter literal backslash+n sebagai pengganti baris baru di luar string." "Buat scraper $url: $task" smart "${AI_TASK_PROVIDER_ORDER_BIG[*]}")
     rc=$?

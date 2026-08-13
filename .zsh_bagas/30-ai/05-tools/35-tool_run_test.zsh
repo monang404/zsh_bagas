@@ -126,7 +126,7 @@ _ai_tool_run_test() {
         out=$(cd -- "$real_cwd" && "$resolved" "${test_args[@]}" 2>&1)
         rc=$?
     fi
-    out=$(printf '%s' "$out" | head -c 3000)
+    out=$(printf '%s' "$out" | _ai_head_c 3000)
     printf '%s\n' "$out"
     if [ "$rc" -eq 0 ]; then
         echo ""

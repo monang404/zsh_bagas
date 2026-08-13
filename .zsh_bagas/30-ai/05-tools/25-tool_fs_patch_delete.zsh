@@ -19,7 +19,7 @@ _ai_tool_patch_file() {
     diff_content=$(_ai_tool_extract_field "$args_json" diff_content)
 
     if [ -z "$path" ]; then
-        echo "ERROR: patch_file membutuhkan args.path (string non-empty). Diterima: $(printf '%s' "$args_json" | head -c 200)"
+        echo "ERROR: patch_file membutuhkan args.path (string non-empty). Diterima: $(printf '%s' "$args_json" | _ai_head_c 200)"
         return 1
     fi
     if [ -z "$diff_content" ]; then
@@ -82,7 +82,7 @@ _ai_tool_delete_file() {
     path=$(_ai_tool_extract_path "$args_json")
 
     if [ -z "$path" ]; then
-        echo "ERROR: delete_file membutuhkan args.path (string non-empty). Diterima: $(printf '%s' "$args_json" | head -c 200)"
+        echo "ERROR: delete_file membutuhkan args.path (string non-empty). Diterima: $(printf '%s' "$args_json" | _ai_head_c 200)"
         return 1
     fi
     if [ ! -f "$path" ]; then

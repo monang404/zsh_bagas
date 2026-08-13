@@ -97,7 +97,7 @@ $(echo "$_sub_files" | tr ',' '\n' | sed 's/^/- /')"
             # _ai_subagent_run) -- summary/findings udah 1-baris (lihat
             # _ai_subagent_oneline di 55-subagent.zsh), jadi ini cuma
             # jaring pengaman, BUKAN token counting framework baru.
-            _sub_block=$(printf '%s' "$_sub_block" | head -c 2000)
+            _sub_block=$(printf '%s' "$_sub_block" | _ai_head_c 2000)
             jq --arg r "$_sub_block" \
                 '. + [{"role":"user","content":$r}]' \
                 "$msgfile" > "$msgfile.tmp.$$" && command mv -f "$msgfile.tmp.$$" "$msgfile"

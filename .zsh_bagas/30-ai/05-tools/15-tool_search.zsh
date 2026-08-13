@@ -11,7 +11,7 @@ _ai_tool_grep_search() {
     glob=$(_ai_tool_extract_field "$args_json" glob)
 
     if [ -z "$pattern" ]; then
-        echo "ERROR: grep_search membutuhkan args.pattern (string non-empty). Diterima: $(printf '%s' "$args_json" | head -c 200)"
+        echo "ERROR: grep_search membutuhkan args.pattern (string non-empty). Diterima: $(printf '%s' "$args_json" | _ai_head_c 200)"
         return 1
     fi
     [ -z "$path" ] && path="."
@@ -55,15 +55,15 @@ _ai_tool_grep_search() {
     # untuk mencegah command injection dari pattern LLM yang mengandung ;/$()
     if command -v rg >/dev/null 2>&1; then
         if [ -n "$glob" ]; then
-            command rg -n -g "$glob" -e "$pattern" "$path" 2>/dev/null | command head -n "${AI_GREP_MAX_RESULTS:-100}"
+            command rg -n -g "$glob" -e "$pattern" "$path" 2>/dev/null | command _ai_head_n "${AI_GREP_MAX_RESULTS:-100}"
         else
-            command rg -n -e "$pattern" "$path" 2>/dev/null | command head -n "${AI_GREP_MAX_RESULTS:-100}"
+            command rg -n -e "$pattern" "$path" 2>/dev/null | command _ai_head_n "${AI_GREP_MAX_RESULTS:-100}"
         fi
     else
         if [ -n "$glob" ]; then
-            command find "$path" -name "$glob" -type f -exec grep -Hn -e "$pattern" {} + 2>/dev/null | command head -n "${AI_GREP_MAX_RESULTS:-100}"
+            command find "$path" -name "$glob" -type f -exec grep -Hn -e "$pattern" {} + 2>/dev/null | command _ai_head_n "${AI_GREP_MAX_RESULTS:-100}"
         else
-            command grep -rn -e "$pattern" "$path" 2>/dev/null | command head -n "${AI_GREP_MAX_RESULTS:-100}"
+            command grep -rn -e "$pattern" "$path" 2>/dev/null | command _ai_head_n "${AI_GREP_MAX_RESULTS:-100}"
         fi
     fi
 }
@@ -73,7 +73,7 @@ _ai_tool_glob_search() {
     local pattern
     pattern=$(_ai_tool_extract_field "$args_json" pattern)
     if [ -z "$pattern" ]; then
-        echo "ERROR: glob_search membutuhkan args.pattern (string non-empty). Diterima: $(printf '%s' "$args_json" | head -c 200)"
+        echo "ERROR: glob_search membutuhkan args.pattern (string non-empty). Diterima: $(printf '%s' "$args_json" | _ai_head_c 200)"
         return 1
     fi
 
@@ -124,7 +124,7 @@ _ai_tool_glob_search() {
             # ke fd/find (itu bakal scan filesystem, yang justru mau
             # dihindari kalau index-nya fresh).
             if [ ${#matched[@]} -gt 0 ]; then
-                printf '%s\n' "${matched[@]}" | head -n 100
+                printf '%s\n' "${matched[@]}" | _ai_head_n 100
             fi
             return 0
         fi
@@ -134,8 +134,8 @@ _ai_tool_glob_search() {
     fi
 
     if command -v fd >/dev/null 2>&1; then
-        command fd "$pattern" | command head -n 100
+        command fd "$pattern" | command _ai_head_n 100
     else
-        command find . -name "*${pattern}*" 2>/dev/null | command head -n 100
+        command find . -name "*${pattern}*" 2>/dev/null | command _ai_head_n 100
     fi
 }

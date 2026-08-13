@@ -11,7 +11,7 @@ _ai_tool_read_file() {
     limit=$(_ai_tool_extract_field "$args_json" limit)
 
     if [ -z "$path" ]; then
-        echo "ERROR: read_file membutuhkan args.path (string non-empty). Diterima: $(printf '%s' "$args_json" | head -c 200)"
+        echo "ERROR: read_file membutuhkan args.path (string non-empty). Diterima: $(printf '%s' "$args_json" | _ai_head_c 200)"
         return 1
     fi
     if [ ! -f "$path" ]; then
@@ -35,7 +35,7 @@ _ai_tool_read_file() {
     else
         out=$(command nl -ba -w4 -s'  ' "$path")
     fi
-    printf '%s' "$out" | command head -c "${AI_FILE_MAX_CHARS:-40000}"
+    printf '%s' "$out" | _ai_head_c "${AI_FILE_MAX_CHARS:-40000}"
 }
 
 _ai_tool_list_dir() {
@@ -47,11 +47,20 @@ _ai_tool_list_dir() {
         echo "ERROR: direktori gak ketemu ($path)"
         return 1
     fi
-    if ! command -v ls >/dev/null 2>&1; then
-        echo "ERROR: command 'ls' gak ketemu di PATH"
+    local ls_cmd=""
+    if command -v eza >/dev/null 2>&1; then
+        ls_cmd="eza"
+    elif command -v ls >/dev/null 2>&1; then
+        ls_cmd="ls"
+    elif [ -x "/bin/ls" ]; then
+        ls_cmd="/bin/ls"
+    elif [ -x "/usr/bin/ls" ]; then
+        ls_cmd="/usr/bin/ls"
+    else
+        echo "ERROR: command 'ls' atau 'eza' gak ketemu di PATH"
         return 1
     fi
-    command ls -lah "$path" | command head -n 50
+    command "$ls_cmd" -lah "$path" | _ai_head_n 50
 }
 
 # ─── Tool Baru: count_lines ───────────────────────────────────
@@ -64,7 +73,7 @@ _ai_tool_count_lines() {
     pattern=$(_ai_tool_extract_field "$args_json" pattern)
 
     if [ -z "$path" ]; then
-        echo "ERROR: count_lines membutuhkan args.path (string non-empty). Diterima: $(printf '%s' "$args_json" | head -c 200)"
+        echo "ERROR: count_lines membutuhkan args.path (string non-empty). Diterima: $(printf '%s' "$args_json" | _ai_head_c 200)"
         return 1
     fi
     if [ ! -f "$path" ]; then

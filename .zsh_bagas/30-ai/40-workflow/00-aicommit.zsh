@@ -22,7 +22,7 @@ aicommit() {
     diffstat=$(git diff --cached --stat)
     guarded_diff=$(_ai_guard_diff "$diff" "$diffstat")
     msg=$(_ai_quick "Buat SATU baris pesan commit git conventional style (feat:/fix:/chore:/refactor:/docs:), bahasa Inggris, tanpa tanda kutip, tanpa penjelasan tambahan." \
-        "$guarded_diff" fast "${AI_TASK_PROVIDER_ORDER_FAST[*]}" | head -1)
+        "$guarded_diff" fast "${AI_TASK_PROVIDER_ORDER_FAST[*]}" | _ai_head_n 1)
     echo "Pesan commit: $msg"
     if command -v gum >/dev/null; then
         gum confirm "Commit dengan pesan ini?" && git commit -m "$msg"

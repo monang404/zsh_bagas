@@ -30,7 +30,7 @@ _ai_is_secret_file() {
     esac
     # lapis kedua: isi file, bukan cuma namanya -- private key biasanya
     # dimulai dengan header PEM yang khas biarpun nama filenya gak ketebak
-    if [ -f "$1" ] && head -c 2000 "$1" 2>/dev/null | grep -qE 'BEGIN (RSA |EC |OPENSSH |DSA |ENCRYPTED )?PRIVATE KEY'; then
+    if [ -f "$1" ] && _ai_head_c 2000 "$1" 2>/dev/null | grep -qE 'BEGIN (RSA |EC |OPENSSH |DSA |ENCRYPTED )?PRIVATE KEY'; then
         return 0
     fi
     return 1
@@ -52,8 +52,8 @@ _ai_is_binary_file() {
     # fallback tanpa `file`: null byte di 8000 byte pertama = indikasi kuat biner.
     # Hindari grep/ugrep (pattern null dan flag -I sering false-positive).
     local _raw _stripped
-    _raw=$(head -c 8000 -- "$1" 2>/dev/null | wc -c | tr -d " ")
-    _stripped=$(head -c 8000 -- "$1" 2>/dev/null | tr -d "\0" | wc -c | tr -d " ")
+    _raw=$(_ai_head_c 8000 "$1" 2>/dev/null | wc -c | tr -d " ")
+    _stripped=$(_ai_head_c 8000 "$1" 2>/dev/null | tr -d "\0" | wc -c | tr -d " ")
     [ -n "$_raw" ] && [ "$_raw" -gt 0 ] && [ "$_raw" -ne "$_stripped" ] && return 0
     return 1
 }

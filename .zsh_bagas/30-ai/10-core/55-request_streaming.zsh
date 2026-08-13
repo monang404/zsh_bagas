@@ -142,7 +142,7 @@ _ai_chat_request_stream() {
     done
 
     echo "[error: semua provider & model gagal (cek 'ai deps' buat lihat provider mana yang aktif). Raw response terakhir:]" >&2
-    echo "$resp" | head -c 300 >&2
+    echo "$resp" | _ai_head_c 300 >&2
     echo "" >&2
     return 1
 }

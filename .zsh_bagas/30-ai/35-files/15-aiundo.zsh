@@ -15,7 +15,7 @@ aiundo() {
         return 1
     fi
     local latest
-    latest=$(command ls -t "${file}".bak.* 2>/dev/null | head -1)
+    latest=$(command ls -t "${file}".bak.* 2>/dev/null | _ai_head_n 1)
     if [ -z "$latest" ]; then
         echo "Gak ada backup buat $file (pola: $file.bak.*)"
         return 1

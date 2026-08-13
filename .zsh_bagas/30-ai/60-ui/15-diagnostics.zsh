@@ -36,7 +36,7 @@ ai_check_deps() {
     fi
     if command -v curl >/dev/null; then
         local curlver
-        curlver=$(curl --version 2>/dev/null | head -1 | awk '{print $2}')
+        curlver=$(curl --version 2>/dev/null | _ai_head_n 1 | awk '{print $2}')
         [ -n "$curlver" ] && echo "  curl versi: $curlver"
     fi
     if command -v termux-notification >/dev/null; then

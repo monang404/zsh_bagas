@@ -49,7 +49,7 @@ _ai_debug_step() {
         output=$(_ai_tool_dispatch "$tool" "$args" 2>&1)
         exit_status=$?
     fi
-    output=$(printf '%s' "$output" | head -c 3000)
+    output=$(printf '%s' "$output" | _ai_head_c 3000)
 
     filepath=$(echo "$args" | jq -r '.path // empty' 2>/dev/null)
     [ -n "$filepath" ] && affected_files[$filepath]=1

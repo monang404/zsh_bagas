@@ -10,7 +10,7 @@ _ai_tool_write_file() {
     content=$(_ai_tool_extract_field "$args_json" content)
 
     if [ -z "$path" ]; then
-        echo "ERROR: write_file membutuhkan args.path (string non-empty). Diterima: $(printf '%s' "$args_json" | head -c 200)"
+        echo "ERROR: write_file membutuhkan args.path (string non-empty). Diterima: $(printf '%s' "$args_json" | _ai_head_c 200)"
         return 1
     fi
     if [ -z "$content" ]; then
@@ -40,7 +40,7 @@ _ai_tool_edit_file() {
     new_str=$(_ai_tool_extract_field "$args_json" new_str)
 
     if [ -z "$path" ]; then
-        echo "ERROR: edit_file membutuhkan args.path (string non-empty). Diterima: $(printf '%s' "$args_json" | head -c 200)"
+        echo "ERROR: edit_file membutuhkan args.path (string non-empty). Diterima: $(printf '%s' "$args_json" | _ai_head_c 200)"
         return 1
     fi
     if [ -z "$old_str" ]; then
@@ -106,7 +106,7 @@ _ai_tool_move_file() {
     dest=$(_ai_tool_extract_field "$args_json" dest destination)
 
     if [ -z "$src" ]; then
-        echo "ERROR: move_file membutuhkan args.path (sumber, string non-empty). Diterima: $(printf '%s' "$args_json" | head -c 200)"
+        echo "ERROR: move_file membutuhkan args.path (sumber, string non-empty). Diterima: $(printf '%s' "$args_json" | _ai_head_c 200)"
         return 1
     fi
     if [ -z "$dest" ]; then

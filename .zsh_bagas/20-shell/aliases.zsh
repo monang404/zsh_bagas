@@ -3,8 +3,8 @@
 # ============================================================
 
 # ─── Aliases: Navigation ────────────────────────────────────
-#alias ls='eza --icons'
-#alias ll='eza -lah --git'
+alias ls='eza --icons'
+alias ll='eza -lah --git'
 alias la='eza -a'
 alias ..='cd ..'
 alias ...='cd ../..'

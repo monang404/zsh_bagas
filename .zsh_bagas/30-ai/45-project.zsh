@@ -96,7 +96,7 @@ aiscan() {
         if [ -f "README.md" ]; then
             echo ""
             echo "## Cuplikan README (30 baris pertama)"
-            head -30 README.md
+            _ai_head_n 30 README.md
         fi
     } > "$outfile"
 

@@ -66,7 +66,7 @@ _ai_subagent_step() {
         output=$(_ai_tool_dispatch "$tool" "$args" 2>&1)
         exit_status=$?
     fi
-    output=$(printf '%s' "$output" | head -c 3000)
+    output=$(printf '%s' "$output" | _ai_head_c 3000)
 
     # v-fix (audit lanjutan, sama kelas bug kayak 42-execution/15-run_tool.zsh
     # main agent): "move_file" args-nya {path: SUMBER, dest: TUJUAN}. Ambil
