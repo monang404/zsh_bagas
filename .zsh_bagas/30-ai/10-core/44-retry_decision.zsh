@@ -54,6 +54,7 @@ _ai_chat_retry_decision() {
     local finish_reason
     finish_reason=$(printf '%s' "$resp" | jq -r '.choices[0].finish_reason // "n/a"' 2>/dev/null)
     tries=$((tries + 1))
+    _ai_log_retry "Waiting before retry..."
     sleep "$AI_RETRY_DELAY"
     return 0
 }

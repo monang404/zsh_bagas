@@ -132,8 +132,11 @@ _ai_agent_finalize() {
             fi
             [ -n "$review_line" ] && final_lines+=("" "Review:" "$review_line")
         fi
-
-        _ai_ui_box "${final_icon_ok} COMPLETE" "${final_lines[@]}"
+        _ai_log_agent_done "Task completed"
+        local l
+        for l in "${final_lines[@]}"; do
+            echo "[AGENT][SUMMARY] $l" >&2
+        done
     else
         [ -z "$block_reason" ] && block_reason="Agent berhenti (step $step), alasan spesifik gak tercatat."
         local -a final_lines
@@ -152,7 +155,11 @@ _ai_agent_finalize() {
         if [ "$_show_hint" -eq 1 ] && hint=$(_ai_agent_reasoning_display "$thought"); then
             final_lines+=("Saran: ${hint//$'\n'/ }")
         fi
-        _ai_ui_box "${final_icon_bad} BLOCKED" "${final_lines[@]}"
+        _ai_log_agent_error "Task blocked"
+        local l
+        for l in "${final_lines[@]}"; do
+            echo "[AGENT][SUMMARY] $l" >&2
+        done
     fi
 
     return 0

@@ -12,6 +12,7 @@
 # Returns the same status aiagent() itself should return.
 _ai_agent_run_execution() {
     local _ai_prev_yolo_set=0 _ai_prev_yolo_value=""
+    local _ai_prev_perm_write_set=0 _ai_prev_perm_write_value=""
 
 # v-fix (bug #52 & #54 audit): cek baterai dulu (loop ini bisa makan
 # waktu berapa menit), lalu pasang wake-lock buat SELURUH sisa fungsi
@@ -26,6 +27,17 @@ _ai_wakelock_acquire
 if (( ${+AI_AGENT_YOLO_MODE} )); then
     _ai_prev_yolo_set=1
     _ai_prev_yolo_value="$AI_AGENT_YOLO_MODE"
+fi
+if (( ${+AI_PERM_WRITE_MODE} )); then
+    _ai_prev_perm_write_set=1
+    _ai_prev_perm_write_value="$AI_PERM_WRITE_MODE"
+fi
+if [ "$yolo" -eq 1 ]; then
+    export AI_AGENT_YOLO_MODE=1
+elif [[ -z "${AI_PERM_WRITE_MODE:-}" || "${AI_PERM_WRITE_MODE}" == "ask_once_per_file" ]]; then
+    # Jika mode autonomous (default, bukan yolo) dan write mode tidak dioverride oleh user,
+    # set ke auto agar tool write_file dalam project tidak memblokir (hang).
+    export AI_PERM_WRITE_MODE="auto"
 fi
 # Establish one explicit runtime context shared by the tool/policy layer.
 # It is shell-local state, never exported to subprocesses.
@@ -118,6 +130,11 @@ if [ "$_ai_prev_yolo_set" -eq 1 ]; then
     typeset -g AI_AGENT_YOLO_MODE="$_ai_prev_yolo_value"
 else
     unset AI_AGENT_YOLO_MODE
+fi
+if [ "$_ai_prev_perm_write_set" -eq 1 ]; then
+    typeset -g AI_PERM_WRITE_MODE="$_ai_prev_perm_write_value"
+else
+    unset AI_PERM_WRITE_MODE
 fi
 return "$finalize_status"
 }

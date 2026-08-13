@@ -19,6 +19,8 @@ _ai_chat_request_stream() {
     local tries payload resp http_status curl_exit
     local model_label_printed=0
 
+    _ai_log_start "Processing request"
+
     for provider in "${provider_order[@]}"; do
         keyvar="${AI_PROVIDERS[${provider}_key_var]}"
         apikey="${(P)keyvar}"
@@ -52,6 +54,10 @@ _ai_chat_request_stream() {
             _ai_is_reasoning_model "$provider" "$model" && is_reasoning_model=1
 
             while [ $tries -lt $AI_MAX_RETRIES ]; do
+                _ai_log_provider "$provider"
+                _ai_log_model "$model"
+                _ai_log_request "Sending request"
+                _ai_log_stream "Receiving response..."
                 local temp
                 temp=$(_ai_chat_temp_for_mode "$mode")
                 payload=$(_ai_build_chat_payload "$msgfile" "$model" "$max_toks" "$temp" "$is_reasoning_model" 1 "$provider")
@@ -69,8 +75,9 @@ _ai_chat_request_stream() {
                 # curl -N sengaja dibiarkan mengalir ke parser; header disimpan
                 # terpisah hanya untuk membaca HTTP status setelah stream selesai.
                 # Semua baris juga disimpan supaya kalau provider ternyata
-                # mengembalikan JSON blocking (bukan SSE), response yang SAMA
-                # bisa diparse tanpa request API kedua.
+                # stream:true; $resp = body itu persis,
+                # aman diparse ulang tanpa request kedua.
+                local _diag_t0=$SECONDS
                 curl -N -s -S --max-time "$curl_timeout" -D "$headerfile" "$endpoint" \
                     -H "Authorization: Bearer $apikey" \
                     -H "Content-Type: application/json" \
@@ -79,6 +86,7 @@ _ai_chat_request_stream() {
                     _ai_sse_process_line "$line" "$rawfile" "$statefile" "$reasoningfile" "$model"
                 done
                 curl_exit=${pipestatus[1]}
+                local _req_duration=$((SECONDS - _diag_t0))
 
                 http_status=$(awk '$1 ~ /^HTTP\// {code=$2} END {print code}' "$headerfile" 2>/dev/null)
                 local stream_content=0 stream_sse=0
@@ -109,6 +117,7 @@ _ai_chat_request_stream() {
                     if [ -n "$reply" ]; then
                         printf "%s > " "$(_ai_model_label "$model")" >&2
                         printf '%s\n' "$reply"
+                        _ai_log_done "Stream completed in ${_req_duration}s"
                         _ai_log_usage "$provider" "$resp"
                         rm -f "$headerfile" "$statefile" "$rawfile" "$reasoningfile"
                         return 0
@@ -118,6 +127,7 @@ _ai_chat_request_stream() {
                 rm -f "$headerfile" "$statefile" "$rawfile" "$reasoningfile"
 
                 if [ "$curl_exit" -eq 28 ]; then
+                    _ai_log_error "Request timeout setelah ${curl_timeout}s"
                     _ai_chat_diag "[warn] $provider/$model: request timeout setelah ${curl_timeout}s; lanjut ke model berikutnya..."
                 fi
 
@@ -125,6 +135,7 @@ _ai_chat_request_stream() {
                     # FIX (audit Fase 7/8, HIGH-1): parity with the blocking path
                     # -- always log usage on a successful streamed reply, so
                     # `aistats` doesn't lose the streaming half of chat traffic.
+                    _ai_log_done "Stream completed in ${_req_duration}s"
                     _ai_log_usage "$provider" "$resp"
                     return 0
                 fi
@@ -133,10 +144,12 @@ _ai_chat_request_stream() {
                 [ $? -eq 1 ] && break
             done
 
+            _ai_log_fallback "$provider/$model gagal, coba model berikutnya..."
             _ai_chat_diag "[info] $provider/$model gagal, coba model berikutnya (kalau ada)..."
             _ai_breaker_record_fail "${provider}/${model}"
         done
 
+        _ai_log_fallback "Semua model provider '$provider' gagal, coba provider berikutnya..."
         echo "[warn: semua model provider '$provider' gagal, coba provider berikutnya...]" >&2
         _ai_breaker_record_fail "$provider"
     done

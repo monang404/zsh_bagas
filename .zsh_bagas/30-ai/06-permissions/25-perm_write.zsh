@@ -14,6 +14,15 @@ _ai_perm_ask_write() {
     local args_json="$2"
 
     if [[ "${AI_AGENT_YOLO_MODE:-0}" == "1" ]] || [[ "${AI_PERM_WRITE_MODE}" == "yolo" ]]; then
+        if [[ "${AI_VERBOSE:-0}" == "1" ]]; then
+            printf "\n[AGENT][PERMISSION]\nTool : %s\nScope: project\nPolicy: yolo\nDecision: ALLOW\n" "$tool_name" >/dev/tty
+        fi
+        return 0
+    fi
+    if [[ "${AI_PERM_WRITE_MODE}" == "auto" ]]; then
+        if [[ "${AI_VERBOSE:-0}" == "1" ]]; then
+            printf "\n[AGENT][PERMISSION]\nTool: %s\nScope: project\nPolicy: auto\nDecision: ALLOW\n" "$tool_name" >/dev/tty
+        fi
         return 0
     fi
 

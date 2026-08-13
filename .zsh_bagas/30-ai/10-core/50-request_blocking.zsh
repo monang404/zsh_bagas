@@ -21,8 +21,8 @@ _ai_chat_request() {
     # return point di bawah -- biar user liat 1 animasi mengalir yang
     # berubah context-nya, bukan spinner kedip-restart tiap ganti model.
     local _spin=""
+    _ai_log_start "Processing request"
     _spin=$(_ai_spinner_start "Menyiapkan AI provider...")
-
     # Ctrl-C harus membatalkan request aktif dan membersihkan spinner.
     # _ai_chat_request sering dipanggil lewat command substitution (r=$(...)),
     # sehingga jangan mengandalkan SIGINT otomatis diteruskan ke curl.
@@ -88,7 +88,10 @@ _ai_chat_request() {
         _ai_is_reasoning_model "$provider" "$model" && is_reasoning_model=1
 
         while [ $tries -lt $AI_MAX_RETRIES ]; do
-            _ai_spinner_update "$_spin" "Menghubungi $provider/$model (percobaan $((tries+1)))..."
+            _ai_log_provider "$provider"
+            _ai_log_model "$model"
+            _ai_log_request "Sending request"
+            _ai_spinner_update "$_spin" "Waiting for provider response (percobaan $((tries+1)))..."
             _ai_chat_diag "[trace] bangun payload buat $provider/$model (percobaan $((tries+1)))..."
             local temp
             temp=$(_ai_chat_temp_for_mode "$mode")
@@ -108,8 +111,10 @@ _ai_chat_request() {
                 return 130
             fi
             _ai_chat_diag "[trace] curl selesai ($((SECONDS - _diag_t0))s) exit=$curl_exit http_status=${http_status:-?}"
+            local _req_duration=$((SECONDS - _diag_t0))
 
             if [ "$curl_exit" -eq 28 ]; then
+                _ai_log_error "Request timeout setelah ${curl_timeout}s"
                 _ai_chat_diag "[warn] $provider/$model: request timeout setelah ${curl_timeout}s; lanjut ke model berikutnya..."
             fi
 
@@ -131,6 +136,7 @@ _ai_chat_request() {
             reply=$(printf '%s' "$resp" | python3 "$AI_EXTRACT_SCRIPT" 2>/dev/null)
             if [ -n "$reply" ]; then
                 _ai_spinner_stop "$_spin"
+                _ai_log_done "Response received in ${_req_duration}s"
                 if [ -n "$result_meta_file" ]; then
                     printf '%s\t%s\n' "$provider" "$model" > "$result_meta_file" 2>/dev/null || true
                 fi
@@ -157,11 +163,12 @@ _ai_chat_request() {
             [ $? -eq 1 ] && break
         done
 
+        _ai_log_fallback "$provider/$model gagal, coba model berikutnya..."
         _ai_chat_diag "[info] $provider/$model gagal, coba model berikutnya (kalau ada)..."
         _ai_breaker_record_fail "${provider}/${model}"
         done   # end model_list loop
 
-        # v-fix: warn SETIAP provider yang gagal ke stderr (bukan cuma
+        _ai_log_fallback "Semua model provider '$provider' gagal, coba provider berikutnya..."
         # provider terakhir) -- sebelumnya provider lain cuma lewat
         # _ai_chat_diag yang tersembunyi kecuali AI_VERBOSE=1, jadi user
         # gak tau provider mana saja yang dicoba dan kenapa semua gagal.

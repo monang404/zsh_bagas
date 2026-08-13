@@ -65,20 +65,8 @@ _ai_agent_execute_loop() {
         [ $_gp_status -eq 1 ] && break
 
         echo ""
-        # Task 1.4: reasoning ("thought") ditampilkan compact lewat
-        # _ai_ui_line (icon ◌), MAKSIMAL 3 baris -- ganti print mentah
-        # "[step N] $thought" yang bisa berapa pun panjangnya. Thought
-        # kosong sengaja gak nge-print apa-apa (skip), biar gak ada box
-        # reasoning kosong yang ganggu di layar.
-        local reasoning_disp
-        if reasoning_disp=$(_ai_agent_reasoning_display "$thought"); then
-            local -a reasoning_lines
-            reasoning_lines=(${(f)reasoning_disp})
-            _ai_ui_line "◌" "${reasoning_lines[1]}"
-            local ridx
-            for (( ridx = 2; ridx <= ${#reasoning_lines[@]}; ridx++ )); do
-                echo "${reasoning_lines[$ridx]}"
-            done
+        if [ -n "$thought" ]; then
+            _ai_log_agent_plan "Thinking..."
         fi
 
         _ai_agent_exec_check_done_rejections
@@ -107,12 +95,9 @@ _ai_agent_execute_loop() {
 
         _ai_agent_state_transition "$state_dir" EXECUTE 2>/dev/null || return 1
 
-        # Task 1.3: baris "→ tool_name ringkasan_arg" compact, gantiin
-        # print [Tool]/[Args] lama -- pakai _ai_ui_line yang sudah ada
-        # dari Task 1.1 biar konsisten sama box/line UI lainnya.
-        local args_disp
-        args_disp=$(_ai_agent_args_summary "$tool" "$args")
-        _ai_ui_line "→" "${tool}${args_disp:+ $args_disp}"
+        # Print plain text execution trace
+        _ai_log_agent_step "$step" "$tool"
+        _ai_log_agent_tool "$tool${args_disp:+ $args_disp}"
 
         _ai_agent_exec_run_tool || break
 

@@ -20,26 +20,16 @@ _ai_agent_print_header() {
     else
         hdr_mode="autonomous (konfirmasi tiap command)"
     fi
-    if [ -n "$resume_slug" ]; then
-        _ai_ui_box "BAGAS AI AGENT" \
-            "Resuming: $goal" \
-            "Project: $hdr_project" \
-            "Model: $hdr_model" \
-            "Mode: $hdr_mode"
+    if [ $step_offset -eq 0 ]; then
+        _ai_log_agent_start "Task received"
     else
-        _ai_ui_box "BAGAS AI AGENT" \
-            "Goal: $goal" \
-            "Project: $hdr_project" \
-            "Model: $hdr_model" \
-            "Mode: $hdr_mode"
+        _ai_log_agent_start "Resuming task"
     fi
-
-# Task 1.5: baris compact "skills: ✓ nama1 ✓ nama2 ..." -- CUMA nama
-# skill yang ke-load (dari $skillsline, 70-skills.zsh), gak pernah
-# isi markdown-nya. Kosong kalau gak ada skill yang match/ketemu
-# (mis. pas --resume, atau goal-nya gak nyerempet keyword manapun)
-# -- sengaja gak nge-print baris kosong buat kasus itu.
+    echo "[AGENT][GOAL] $goal" >&2
+    echo "[AGENT][PROJECT] $hdr_project" >&2
+    echo "[AGENT][MODEL] $hdr_model" >&2
+    echo "[AGENT][MODE] $hdr_mode" >&2
     if [ -n "$skillsline" ]; then
-        _ai_ui_line "•" "$skillsline"
+        echo "[AGENT][SKILLS] $skillsline" >&2
     fi
 }
