@@ -69,8 +69,9 @@ _ai_update_detect() {
         return 0
     fi
 
-    local_count="${aheadbehind%% *}"
-    remote_count="${aheadbehind##* }"
+    # gunakan awk untuk mengatasi tab output git rev-list
+    local_count=$(echo "$aheadbehind" | awk '{print $1}')
+    remote_count=$(echo "$aheadbehind" | awk '{print $2}')
     if [ "$local_count" = "0" ] && [ "$remote_count" = "0" ]; then
         echo "Remote/update status: up to date."
     elif [ "$local_count" = "0" ]; then

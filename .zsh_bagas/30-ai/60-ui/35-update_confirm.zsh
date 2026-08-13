@@ -58,8 +58,9 @@ _ai_update_confirm_pull() {
         return 1
     fi
 
-    local_count="${aheadbehind%% *}"
-    remote_count="${aheadbehind##* }"
+    # gunakan awk atau hapus tab/spasi agar aman
+    local_count=$(echo "$aheadbehind" | awk '{print $1}')
+    remote_count=$(echo "$aheadbehind" | awk '{print $2}')
     echo "Remote/update status: local=$local_count, remote=$remote_count"
 
     if [ "$remote_count" = "0" ]; then
