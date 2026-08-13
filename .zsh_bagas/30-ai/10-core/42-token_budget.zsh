@@ -41,7 +41,37 @@ _ai_chat_temp_for_mode() {
 # AI_MODELS), jadi cek nama model doang gak cukup, harus ikut cek
 # provider-nya biar field ini gak ke-kirim ke endpoint yang gak ngerti
 # dan balikin 400.
+#
+# v-fix (deepseek v4 empty-completion bug): per dokumentasi resmi
+# (api-docs.deepseek.com/guides/thinking_mode), deepseek-v4-flash DAN
+# deepseek-v4-pro punya thinking mode ENABLED BY DEFAULT dengan default
+# effort "high" -- ini beda dari model lama (deepseek-chat/deepseek-
+# reasoner) yang gak auto-mikir kalau dipanggil lewat alias non-thinking.
+# Kalau reasoning_effort gak dikirim eksplisit, model mikir panjang dulu
+# (chain-of-thought masuk reasoning_content) SEBELUM nulis content, dan
+# effort "high" gampang ngabisin max_tokens 4000 punya kita duluan
+# sebelum sempat nulis jawaban akhir -> content kosong, keliatan kayak
+# "provider gagal" padahal HTTP 200 sehat. Makanya deepseek-v4* juga
+# harus dianggap "reasoning model" di sini biar dapet reasoning_effort
+# eksplisit (default "low", lihat DEEPSEEK_REASONING_EFFORT) alih-alih
+# diam-diam jalan di effort "high" bawaan API.
 _ai_is_reasoning_model() {
     local provider="$1" model="$2"
-    [[ "$provider" == groq* && "$model" == *gpt-oss* ]]
+    [[ "$provider" == groq* && "$model" == *gpt-oss* ]] && return 0
+    [[ "$provider" == deepseek* && "$model" == deepseek-v4-* ]] && return 0
+    return 1
+}
+
+# Effort value yang dikirim beda per provider (Groq: low/medium/high,
+# DeepSeek: low/high/max -- lihat tabel mapping di dokumentasi resmi).
+# "low" dipilih sebagai default DeepSeek supaya sisa budget max_tokens
+# yang kecil (4000 default, lihat _ai_resolve_max_toks) lebih kebagian
+# buat jawaban beneran, bukan abis buat mikir. Naikkan ke "high"/"max" di
+# 90-local kalau task-nya emang butuh reasoning dalam dan max_tokens-nya
+# udah dinaikin juga.
+: ${DEEPSEEK_REASONING_EFFORT:="low"}
+
+_ai_reasoning_effort_for() {
+    local provider="$1"
+    [[ "$provider" == deepseek* ]] && echo "$DEEPSEEK_REASONING_EFFORT" || echo "$GROQ_REASONING_EFFORT"
 }

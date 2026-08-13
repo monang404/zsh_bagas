@@ -54,7 +54,7 @@ _ai_chat_request_stream() {
             while [ $tries -lt $AI_MAX_RETRIES ]; do
                 local temp
                 temp=$(_ai_chat_temp_for_mode "$mode")
-                payload=$(_ai_build_chat_payload "$msgfile" "$model" "$max_toks" "$temp" "$is_reasoning_model" 1)
+                payload=$(_ai_build_chat_payload "$msgfile" "$model" "$max_toks" "$temp" "$is_reasoning_model" 1 "$provider")
 
                 local curl_timeout="${AI_CURL_TIMEOUT:-45}"
                 [[ "$curl_timeout" == <-> ]] || curl_timeout=45

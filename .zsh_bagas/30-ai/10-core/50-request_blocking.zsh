@@ -125,9 +125,19 @@ _ai_chat_request() {
                 return 0
             fi
 
-            # gagal — tampilin curl exit code/HTTP status ke stderr via diag,
-            # cuplikan body cuma di titik "semua provider gagal" di bawah,
-            # biar gak ngotorin stdout yang dipakai sebagai reply.
+            # gagal — tampilin curl exit code/HTTP status ke stderr via diag.
+            # v-fix: kalau http_status 200 tapi extraction-nya kosong (bukan
+            # 413/429/404, bukan .error field, bukan timeout), itu kasus
+            # paling membingungkan -- API "sehat" tapi gak ada konten yang
+            # kebaca (mis. choices:[] atau content+reasoning_content dua-
+            # duanya kosong, sering gara-gara model ID yang gak valid buat
+            # provider tsb). Dump cuplikan raw body-nya SEKARANG (per-
+            # attempt), jangan tunggu sampai semua provider abis, biar
+            # gampang didiagnosis dari trace langsung.
+            if [ "$http_status" = "200" ]; then
+                _ai_chat_diag "[warn] $provider/$model: HTTP 200 tapi gak ada konten yang kebaca (cek model ID valid?). Cuplikan raw response:"
+                _ai_chat_diag "$(printf '%s' "$resp" | _ai_head_c 500)"
+            fi
             _ai_chat_retry_decision "$http_status" "$provider" "$model" "$resp"
             [ $? -eq 1 ] && break
         done
