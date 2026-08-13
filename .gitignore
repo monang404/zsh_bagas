@@ -1,2 +1,7 @@
 # Ignore zip files
 *.zip
+
+# Ignore local generated files
+generate/
+*.bak.*
+.DS_Store
