@@ -17,14 +17,18 @@ _ai_perm_ask_process() {
 
 _ai_perm_ask() {
     local msg="$1"
+    # Prompt interaktif harus selalu muncul di terminal, meskipun
+    # fungsi ini dipanggil di dalam block yang stderr-nya di-redirect
+    # (mis. 2>_perm_errfile di _ai_tool_dispatch).
     if command -v gum >/dev/null; then
-        gum confirm "$msg"
+        gum confirm "$msg" </dev/tty >/dev/tty 2>/dev/tty
     else
         local confirm=""
-        if read -t 60 "confirm?$msg (y/n) "; then
+        # prompt 'read' di zsh otomatis ditulis ke stderr
+        if read -t 60 "confirm?$msg (y/n) " </dev/tty 2>/dev/tty; then
             [[ "$confirm" == "y" ]]
         else
-            echo "Timeout menunggu konfirmasi."
+            echo "Timeout menunggu konfirmasi." >/dev/tty
             return 1
         fi
     fi
