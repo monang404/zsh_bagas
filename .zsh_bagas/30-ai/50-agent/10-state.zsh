@@ -13,7 +13,7 @@ _ai_agent_parse() {
 import json, os, sys
 raw = sys.stdin.read()
 outdir = os.environ['AI_AGENT_PARSE_OUTDIR']
-thought, tool, args, done = '', '', '{}', False
+thought, tool, args, done, compat_msg = '', '', '{}', False, ''
 dec = json.JSONDecoder(strict=False)
 idxs = [i for i, ch in enumerate(raw) if ch == '{']
 for i in reversed(idxs):
@@ -24,17 +24,11 @@ for i in reversed(idxs):
     if isinstance(obj, dict) and ('tool' in obj or 'command' in obj or 'thought' in obj or 'done' in obj):
         thought = str(obj.get('thought') or '')
         if 'command' in obj and 'tool' not in obj:
-            # Legacy arbitrary-shell output is opt-in. In the default agent
-            # contract, a model must request a structured tool such as
-            # exec_process instead of smuggling a shell string through the
-            # parser.
-            if os.environ.get('AI_AGENT_EXPOSE_ARBITRARY_SHELL') == '1':
-                tool = 'run_command'
-                args = json.dumps({'command': str(obj.get('command'))})
-            else:
-                tool = ''
-                args = json.dumps({})
-                thought = (thought + ' Format legacy \"command\" ditolak. Gunakan: {\"tool\":\"run_command\",\"args\":{\"command\":\"...\"},\"done\":false}').strip()
+            # Auto-map legacy command format directly to run_command
+            # because some models frequently fall back to it.
+            tool = 'run_command'
+            args = json.dumps({'command': str(obj.get('command'))})
+            compat_msg = 'Legacy tool format detected. Normalized to run_command.'
         else:
             tool = str(obj.get('tool') or '')
             raw_args = obj.get('args')
@@ -52,6 +46,8 @@ for i in reversed(idxs):
             for field in hoist_fields:
                 if field not in raw_args and field in obj and field not in ('tool', 'thought', 'done', 'args'):
                     raw_args[field] = obj[field]
+                    if not compat_msg:
+                        compat_msg = 'Legacy tool format detected. Normalized root fields into args.'
             args = json.dumps(raw_args)
         done = bool(obj.get('done', False))
         break
@@ -63,6 +59,8 @@ with open(os.path.join(outdir, 'args'), 'w', encoding='utf-8') as f:
     f.write(args)
 with open(os.path.join(outdir, 'done'), 'w', encoding='utf-8') as f:
     f.write('true' if done else 'false')
+with open(os.path.join(outdir, 'compat'), 'w', encoding='utf-8') as f:
+    f.write(compat_msg)
 " 2>/dev/null
     echo "$tmpdir"
 }

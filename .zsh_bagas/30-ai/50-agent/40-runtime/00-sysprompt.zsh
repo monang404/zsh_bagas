@@ -12,11 +12,9 @@ _ai_agent_build_sysprompt() {
 
 PENTING — FORMAT ARGS:
 Semua parameter tool HARUS di dalam object \"args\", BUKAN di root JSON.
-SALAH: {\"tool\":\"read_file\",\"path\":\"x.py\",\"done\":false}
-BENAR: {\"tool\":\"read_file\",\"args\":{\"path\":\"x.py\"},\"done\":false}
-SALAH: {\"command\":\"ls -la\"}
-BENAR: {\"tool\":\"run_command\",\"args\":{\"command\":\"ls -la\"},\"done\":false}
-Field \"command\" di root object AKAN DITOLAK. Selalu pakai format tool+args.
+Contoh penulisan yang BENAR:
+{\"tool\":\"read_file\",\"args\":{\"path\":\"x.py\"},\"done\":false}
+{\"tool\":\"run_command\",\"args\":{\"command\":\"ls -la\"},\"done\":false}
 
 TUJUAN UTAMA:
 User harus selalu mengerti:

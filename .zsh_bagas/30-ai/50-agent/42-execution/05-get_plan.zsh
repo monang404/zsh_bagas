@@ -74,7 +74,13 @@ _ai_agent_exec_get_plan() {
     tool=$(<"$pdir/tool")
     args=$(<"$pdir/args")
     done_flag=$(<"$pdir/done")
+    local compat_msg=""
+    [ -f "$pdir/compat" ] && compat_msg=$(<"$pdir/compat")
     rm -rf "$pdir"
+
+    if [ "$AI_VERBOSE" = "1" ] && [ -n "$compat_msg" ]; then
+        echo "  [AGENT][COMPAT] $compat_msg"
+    fi
 
     if [ -z "$thought" ] && [ -z "$tool" ] && [ "$done_flag" != "true" ]; then
         echo "[error: agent balas format JSON gak valid, berhenti. Raw: $reply]"
