@@ -65,11 +65,7 @@ _ai_tool_list_dir() {
         echo "ERROR: executable 'ls' atau 'eza' gak ketemu di PATH"
         return 1
     fi
-    if command -v awk >/dev/null 2>&1; then
-        "$ls_cmd" -lah "$path" 2>&1 | awk 'NR<=50'
-    else
-        "$ls_cmd" -lah "$path" 2>&1 | command head -n 50
-    fi
+    "$ls_cmd" -lah "$path" 2>&1 | command python3 -c 'import sys; [sys.stdout.write(l) for i, l in enumerate(sys.stdin) if i < 50]' 2>/dev/null
 }
 
 # ─── Tool Baru: count_lines ───────────────────────────────────
