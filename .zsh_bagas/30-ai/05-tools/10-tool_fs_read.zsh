@@ -65,10 +65,23 @@ _ai_tool_list_dir() {
         echo "ERROR: executable 'ls' atau 'eza' gak ketemu di PATH"
         return 1
     fi
-    # v-fix: jangan pakai python3 sebagai filter -- bisa exit 127 kalau
-    # python3 tidak ada di PATH (persis bug yang bikin list_dir exit 127).
-    # `head` jauh lebih portable dan selalu tersedia di Termux/Linux/macOS.
-    "$ls_cmd" -lah "$path" 2>&1 | command head -n 50
+    # v-fix: limit output ke 50 baris dengan fallback chain biar portable
+    # di Termux tanpa coreutils (head tidak ada), Termux punya busybox
+    # yang sediakan awk & sed. Pure zsh read-loop jadi last resort.
+    local _ls_out
+    _ls_out=$("$ls_cmd" -lah "$path" 2>&1)
+    if command -v awk > /dev/null 2>&1; then
+        printf '%s\n' "$_ls_out" | command awk 'NR<=50'
+    elif command -v sed > /dev/null 2>&1; then
+        printf '%s\n' "$_ls_out" | command sed -n '1,50p'
+    else
+        # pure zsh: baca baris satu-satu, stop di 50
+        local _ln _lc=0
+        while IFS= read -r _ln && (( _lc < 50 )); do
+            print -r -- "$_ln"
+            _lc=$(( _lc + 1 ))
+        done <<< "$_ls_out"
+    fi
 }
 
 # ─── Tool Baru: count_lines ───────────────────────────────────

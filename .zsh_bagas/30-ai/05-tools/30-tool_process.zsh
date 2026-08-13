@@ -102,6 +102,24 @@ _ai_tool_run_command() {
     local out rc
     out=$(zsh -f -c -- "$command" 2>&1)
     rc=$?
+
+    # ── Auto-install jika exit 127 (command not found) ──────────
+    if [ "$rc" -eq 127 ] && command -v _ai_autodep_extract_missing_cmd > /dev/null 2>&1; then
+        local _dep_cmd _dep_install_out
+        _dep_cmd=$(_ai_autodep_extract_missing_cmd "$out")
+        if [ -n "$_dep_cmd" ]; then
+            _dep_install_out=$(_ai_autodep_install_missing "$_dep_cmd" 2>&1)
+            if [ $? -eq 0 ]; then
+                # Retry command setelah install
+                out=$(zsh -f -c -- "$command" 2>&1)
+                rc=$?
+                out="${_dep_install_out}"$'\n'"${out}"
+            else
+                out="${out}"$'\n'"${_dep_install_out}"
+            fi
+        fi
+    fi
+
     out=$(printf '%s' "$out" | _ai_head_c 3000)
 
     if [ $rc -eq 0 ]; then
@@ -116,3 +134,4 @@ _ai_tool_run_command() {
         return 1
     fi
 }
+

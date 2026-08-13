@@ -6,6 +6,7 @@
 # ============================================================
 
 _ai_agent_exec_log_and_notify() {
+    setopt localoptions noxtrace
     local args_summary res_summary ft_json result_disp
     local -i _now_ts
 

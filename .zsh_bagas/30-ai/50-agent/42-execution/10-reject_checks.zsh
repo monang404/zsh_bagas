@@ -15,6 +15,7 @@
 # goal yang emang gak butuh aksi apa-apa. Dorong balik buat
 # verifikasi dulu, jangan langsung percaya.
 _ai_agent_exec_check_done_rejections() {
+    setopt localoptions noxtrace
     if [ "$done_flag" = "true" ]; then
         _ai_agent_state_transition "$state_dir" VERIFY 2>/dev/null || return 2
     fi

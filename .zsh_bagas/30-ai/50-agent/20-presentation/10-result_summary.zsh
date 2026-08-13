@@ -9,6 +9,7 @@
 # (dikirim balik ke msgfile) & buat agent_runs/*.jsonl, cuma versi yang
 # nyampe ke terminal user yang diringkas di sini.
 _ai_agent_result_summary() {
+    setopt localoptions noxtrace
     local tool="$1" output="$2" rc="$3"
     local total_lines first_line
 

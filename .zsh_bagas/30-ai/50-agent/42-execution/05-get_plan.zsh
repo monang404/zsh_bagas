@@ -18,6 +18,10 @@
 # ============================================================
 
 _ai_agent_exec_get_plan() {
+    # Same noxtrace guard as _ai_agent_execute_loop -- fungsi ini assign
+    # shared-state vars (reply, thought, tool, etc.) yang bisa di-trace
+    # oleh xtrace global kalau guard-nya hanya di parent loop.
+    setopt localoptions noxtrace
     # Init already leaves lifecycle in PLAN. Re-entering PLAN from PLAN is
     # not a valid transition; treat "already PLAN" as success (no-op).
     # Only attempt the transition when we are coming from EXECUTE/VERIFY

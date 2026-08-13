@@ -12,6 +12,7 @@
 # Permission check sudah dilakukan di dalam _ai_tool_dispatch via
 # _ai_permission_check. Tidak perlu wrapper if/else di sini lagi.
 _ai_agent_exec_run_tool() {
+    setopt localoptions noxtrace
     output=$(_ai_tool_dispatch "$tool" "$args" 2>&1)
     exit_status=$?
     if [ -f "$state_dir/cancelled" ]; then
@@ -19,8 +20,32 @@ _ai_agent_exec_run_tool() {
         _ai_agent_state_transition "$state_dir" BLOCKED 2>/dev/null || true
         return 1
     fi
+
+    # ── Auto-install dependency saat exit 127 (command not found) ──
+    # Kalau tool gagal karena command hilang, coba detect, install, retry
+    # SEKALI -- biar agent bisa lanjut tanpa intervensi manual user.
+    # Hanya jalan kalau modul autodep (02-tool_autodep.zsh) ke-load.
+    if [ "$exit_status" -eq 127 ] && command -v _ai_autodep_extract_missing_cmd > /dev/null 2>&1; then
+        local _dep_cmd _dep_install_out
+        _dep_cmd=$(_ai_autodep_extract_missing_cmd "$output")
+        if [ -n "$_dep_cmd" ]; then
+            _dep_install_out=$(_ai_autodep_install_missing "$_dep_cmd" 2>&1)
+            if [ $? -eq 0 ]; then
+                # Install berhasil → retry tool sekali
+                local _retry_out _retry_rc
+                _retry_out=$(_ai_tool_dispatch "$tool" "$args" 2>&1)
+                _retry_rc=$?
+                output="${_dep_install_out}"$'\n'"${_retry_out}"
+                exit_status=$_retry_rc
+            else
+                output="${output}"$'\n'"${_dep_install_out}"
+            fi
+        fi
+    fi
+
     output=$(printf '%s' "$output" | _ai_head_c 3000)
     commands_run=$((commands_run+1))
+
 
     # FIX BUG-3: filepath dideklarasikan SEKALI, dipakai untuk
     # dua keperluan: py_compile tracking DAN session logging.

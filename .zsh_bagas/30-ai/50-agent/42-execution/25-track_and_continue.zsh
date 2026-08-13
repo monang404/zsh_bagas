@@ -9,6 +9,7 @@
 # ============================================================
 
 _ai_agent_exec_track_and_continue() {
+    setopt localoptions noxtrace
     if [ "$exit_status" -ne 0 ]; then
         if [ "$tool" = "$last_failed_tool" ] && [ "$args" = "$last_failed_args" ]; then
             same_fail_count=$((same_fail_count+1))

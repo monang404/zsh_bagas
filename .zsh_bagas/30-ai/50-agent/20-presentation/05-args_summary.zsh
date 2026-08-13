@@ -10,6 +10,7 @@
 # tampilan: gak menyentuh args_json asli yang dikirim ke
 # _ai_tool_dispatch sama sekali.
 _ai_agent_args_summary() {
+    setopt localoptions noxtrace
     local tool="$1" args_json="$2"
     local val=""
     case "$tool" in
