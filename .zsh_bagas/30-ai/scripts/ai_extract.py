@@ -70,14 +70,21 @@ def extract(raw: str) -> str:
 
     message = choices[0].get("message") or {}
     content = (message.get("content") or "").strip()
+    reasoning = (message.get("reasoning_content") or "").strip()
+    
+    # Gabungkan reasoning dan content agar text parser agent tetap bisa membacanya
+    # bahkan jika model v4/reasoning menaruh pemikirannya di field reasoning_content
+    # dan mengosongkan content.
+    full_text = ""
+    if reasoning:
+        full_text += reasoning + "\n"
     if content:
-        return strip_leaked_trace(content).strip()
+        full_text += content
+        
+    full_text = full_text.strip()
+    if full_text:
+        return strip_leaked_trace(full_text).strip()
 
-    # Reasoning fields are provider/model-internal and must never be exposed
-    # as the user-facing answer. If a reasoning model exhausts its token
-    # budget before producing final content, return empty so the caller can
-    # classify the response as incomplete and apply its normal retry/fallback
-    # policy.
     return ""
 
 
