@@ -34,7 +34,7 @@ _ai_chat_request() {
             kill -TERM "$_ai_active_curl_pid" 2>/dev/null
         fi
         _ai_cancelled=1
-        :
+        _ai_spinner_stop "$_spin"
         return 130
     }
     TRAPTERM() {
@@ -42,7 +42,7 @@ _ai_chat_request() {
             kill -TERM "$_ai_active_curl_pid" 2>/dev/null
         fi
         _ai_cancelled=1
-        :
+        _ai_spinner_stop "$_spin"
         return 143
     }
 
@@ -99,7 +99,7 @@ _ai_chat_request() {
             _ai_http_call_blocking "$endpoint" "$apikey" "$payload" "$curl_timeout"
             if [ $? -eq 130 ]; then
                 trap - INT TERM
-                :
+                _ai_spinner_stop "$_spin"
                 return 130
             fi
 
