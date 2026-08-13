@@ -55,7 +55,7 @@ sys.stdout.buffer.write(sys.stdin.buffer.read(int(sys.argv[1])))
     fi
     # Last resort: pure-zsh read loop (lambat, tapi tidak crash)
     local chunk byte count=0
-    while IFS= read -r -k 1 byte; do
+    while IFS= read -r -u 0 -k 1 byte; do
         printf '%s' "$byte"
         count=$((count+1))
         [ $count -ge $n ] && break
