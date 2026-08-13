@@ -48,19 +48,19 @@ _ai_tool_list_dir() {
         return 1
     fi
     local ls_cmd=""
-    if command -v eza >/dev/null 2>&1; then
-        ls_cmd="eza"
-    elif command -v ls >/dev/null 2>&1; then
-        ls_cmd="ls"
+    if whence -p eza >/dev/null 2>&1; then
+        ls_cmd="$(whence -p eza)"
+    elif whence -p ls >/dev/null 2>&1; then
+        ls_cmd="$(whence -p ls)"
     elif [ -x "/bin/ls" ]; then
         ls_cmd="/bin/ls"
     elif [ -x "/usr/bin/ls" ]; then
         ls_cmd="/usr/bin/ls"
     else
-        echo "ERROR: command 'ls' atau 'eza' gak ketemu di PATH"
+        echo "ERROR: executable 'ls' atau 'eza' gak ketemu di PATH"
         return 1
     fi
-    command "$ls_cmd" -lah "$path" | _ai_head_n 50
+    "$ls_cmd" -lah "$path" | _ai_head_n 50
 }
 
 # ─── Tool Baru: count_lines ───────────────────────────────────
