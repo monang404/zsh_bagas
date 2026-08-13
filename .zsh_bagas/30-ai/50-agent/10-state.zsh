@@ -8,7 +8,7 @@ import json, os, sys
 raw = sys.stdin.read()
 outdir = os.environ['AI_AGENT_PARSE_OUTDIR']
 thought, tool, args, done = '', '', '{}', False
-dec = json.JSONDecoder()
+dec = json.JSONDecoder(strict=False)
 idxs = [i for i, ch in enumerate(raw) if ch == '{']
 for i in reversed(idxs):
     try:
