@@ -111,5 +111,16 @@ _ai_update_confirm_pull() {
         echo "Ringkasan git pull:"
         printf '%s\n' "$pull_output"
     fi
+    
+    echo ""
+    if read -t 60 "reload?Reload zsh sekarang untuk menerapkan pembaruan (exec zsh)? (y/n) "; then
+        if [[ "$reload" == "y" || "$reload" == "Y" ]]; then
+            echo ""
+            echo "Memuat ulang zsh..."
+            exec zsh
+        fi
+    fi
+    echo ""
+    
     return 0
 }
