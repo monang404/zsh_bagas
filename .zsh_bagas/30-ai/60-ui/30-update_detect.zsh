@@ -31,7 +31,7 @@ _ai_update_detect() {
     if [ -n "$status_output" ]; then
         echo "Working tree: DIRTY"
         echo "WARNING: repository memiliki perubahan lokal yang belum di-commit."
-        echo "Pull otomatis tidak aman karena perubahan lokal dapat mengalami conflict."
+        echo "Git pull membutuhkan working tree yang clean."
     else
         echo "Working tree: clean"
     fi

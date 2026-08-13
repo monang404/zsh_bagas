@@ -22,9 +22,21 @@ _ai_update_confirm_pull() {
     if [ -n "$status_output" ]; then
         echo "Working tree: DIRTY"
         echo "WARNING: repository memiliki perubahan lokal yang belum di-commit."
-        echo "Untuk keamanan, git pull diblokir sampai perubahan lokal diamankan secara manual."
-        echo "Tidak ada stash, reset, clean, commit, atau overwrite otomatis."
-        return 1
+        echo "Untuk keamanan, git pull biasanya diblokir sampai perubahan lokal diamankan."
+        if read -t 60 "clean_confirm?Apakah Anda ingin me-reset/menghapus perubahan lokal ini secara otomatis? (y/n) "; then
+            if [[ "$clean_confirm" == "y" || "$clean_confirm" == "Y" ]]; then
+                echo "Membersihkan perubahan lokal..."
+                git -C "$repo" restore . 2>/dev/null
+                git -C "$repo" clean -fd 2>/dev/null
+                echo "Selesai. Working tree sekarang clean."
+            else
+                echo "Update dibatalkan. Silakan amankan perubahan secara manual."
+                return 1
+            fi
+        else
+            echo "Timeout atau input tidak tersedia. Update dibatalkan."
+            return 1
+        fi
     fi
     echo "Working tree: clean"
 
