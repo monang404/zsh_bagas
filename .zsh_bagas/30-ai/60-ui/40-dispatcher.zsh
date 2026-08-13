@@ -92,11 +92,9 @@ ai() {
         _ai_need_any_key || return 1
         echo ""
         echo "-- AI --"
-        local reply
-        reply=$(_ai_quick "$AI_PERSONA_SHORT" "$*" fast "${AI_TASK_PROVIDER_ORDER_FAST[*]}")
-        echo "$reply"
+        _ai_quick "$AI_PERSONA_SHORT" "$*" fast "${AI_TASK_PROVIDER_ORDER_FAST[*]}" "" 1 "chat"
+        echo ""
         echo "--"
         echo ""
-        _ai_log "chat" "$*" "$reply"
     fi
 }
