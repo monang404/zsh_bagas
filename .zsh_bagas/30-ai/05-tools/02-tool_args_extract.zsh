@@ -16,9 +16,9 @@ _ai_tool_extract_field() {
     local expr="" f
     for f in "$@"; do
         if [ -z "$expr" ]; then
-            expr=".$f"
+            expr=".$f // .parameters.$f // .arguments.$f"
         else
-            expr="$expr // .$f"
+            expr="$expr // .$f // .parameters.$f // .arguments.$f"
         fi
     done
     [ -z "$expr" ] && return 0
