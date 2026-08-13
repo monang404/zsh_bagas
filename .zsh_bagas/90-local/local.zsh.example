@@ -1,0 +1,18 @@
+# ============================================================
+#  90-local/local.zsh.example — TEMPLATE, bukan file aktif.
+#
+#  Kalau ada setting yang khusus buat satu device doang (path yang
+#  beda, model override, dll), copy file ini jadi "local.zsh" (tanpa
+#  ".example") di folder yang sama. "local.zsh" (bukan yang
+#  ".example" ini) sudah di-gitignore, jadi aman taruh nilai yang
+#  spesifik-device di situ tanpa kecampur ke git history.
+#
+#  File ini di-load PALING TERAKHIR (folder "90-"), jadi apa pun
+#  yang di-set di sini akan override modul-modul sebelumnya.
+# ============================================================
+
+# Contoh: override model default Gemini cuma di device ini
+# export GEMINI_MODEL="gemini-flash-latest"
+
+# Contoh: nambah PATH khusus device ini
+# export PATH="$HOME/bin-khusus:$PATH"
