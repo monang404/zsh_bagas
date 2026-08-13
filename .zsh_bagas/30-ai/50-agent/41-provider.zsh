@@ -11,7 +11,11 @@ _ai_agent_provider_request() {
 
     # Contract: stdout is model response; non-zero means no usable response.
     # Provider-specific failures remain owned by _ai_chat_request.
-    _ai_chat_request "$msgfile" "$mode" "$task_class" "$order"
+    # v-fix: pass AI_AGENT_MAX_TOKS (default 8000) -- agent butuh ruang token
+    # lebih untuk thought terstruktur + JSON reply. Groq yang ketat TPM-nya
+    # sudah dilindungi oleh retry_decision yang otomatis nurunin budget saat
+    # kena 413, jadi override ini aman dicoba di semua provider.
+    _ai_chat_request "$msgfile" "$mode" "$task_class" "$order" "${AI_AGENT_MAX_TOKS:-8000}"
 }
 
 _ai_agent_provider_health() {

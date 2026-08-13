@@ -28,6 +28,13 @@ AI_FILE_MAX_CHARS=40000
 # Naikkan ke 5000-6000 kalau kamu punya akun Groq paid/Dev tier.
 AI_PROJECT_MAX_TOKS=3500
 
+# AI_AGENT_MAX_TOKS: max_tokens per step untuk ai agent (ReAct loop).
+# Default 8000 -- agent butuh ruang output lebih untuk thought terstruktur
+# + JSON reply yang detail. Provider yang ketat TPM-nya (Groq free tier)
+# sudah dilindungi retry_decision yang otomatis nurunin budget saat 413.
+# Set ke 4000 di 90-local kalau kamu cuma pakai Groq tier gratis.
+: ${AI_AGENT_MAX_TOKS:=8000}
+
 
 # v-fix (bug #55 audit): dulu gak ada checkpoint sama sekali buat
 # aiagent -- kalau proses Termux mati di tengah loop (OOM killer, app

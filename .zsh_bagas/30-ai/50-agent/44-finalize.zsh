@@ -141,8 +141,15 @@ _ai_agent_finalize() {
         # "Saran next step" dari reasoning TERAKHIR LLM yang udah ada
         # ($thought) -- diringkas pakai helper Task 1.4 yang sama
         # (_ai_agent_reasoning_display), BUKAN LLM call baru.
+        # v-fix: jangan tampilkan thought stale kalau block disebabkan
+        # kegagalan provider/LLM -- thought itu dari step SEBELUMNYA,
+        # bukan dari step yang gagal, jadi menyesatkan jika ditampilkan
+        # sebagai "Saran" padahal isinya reasoning yang gak nyambung
+        # dengan penyebab kegagalan.
         local hint
-        if hint=$(_ai_agent_reasoning_display "$thought"); then
+        local _show_hint=1
+        [[ "$block_reason" == *"LLM/provider request gagal"* ]] && _show_hint=0
+        if [ "$_show_hint" -eq 1 ] && hint=$(_ai_agent_reasoning_display "$thought"); then
             final_lines+=("Saran: ${hint//$'\n'/ }")
         fi
         _ai_ui_box "${final_icon_bad} BLOCKED" "${final_lines[@]}"

@@ -53,9 +53,9 @@ _ai_tool_list_dir() {
         return 1
     fi
     local ls_cmd=""
-    if whence -p eza >/dev/null 2>&1; then
+    if whence -p eza > /dev/null 2>&1; then
         ls_cmd="$(whence -p eza)"
-    elif whence -p ls >/dev/null 2>&1; then
+    elif whence -p ls > /dev/null 2>&1; then
         ls_cmd="$(whence -p ls)"
     elif [ -x "/bin/ls" ]; then
         ls_cmd="/bin/ls"
@@ -65,7 +65,10 @@ _ai_tool_list_dir() {
         echo "ERROR: executable 'ls' atau 'eza' gak ketemu di PATH"
         return 1
     fi
-    "$ls_cmd" -lah "$path" 2>&1 | command python3 -c 'import sys; [sys.stdout.write(l) for i, l in enumerate(sys.stdin) if i < 50]' 2>/dev/null
+    # v-fix: jangan pakai python3 sebagai filter -- bisa exit 127 kalau
+    # python3 tidak ada di PATH (persis bug yang bikin list_dir exit 127).
+    # `head` jauh lebih portable dan selalu tersedia di Termux/Linux/macOS.
+    "$ls_cmd" -lah "$path" 2>&1 | command head -n 50
 }
 
 # ─── Tool Baru: count_lines ───────────────────────────────────

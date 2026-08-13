@@ -130,12 +130,25 @@ _ai_chat_request() {
         _ai_breaker_record_fail "${provider}/${model}"
         done   # end model_list loop
 
+        # v-fix: warn SETIAP provider yang gagal ke stderr (bukan cuma
+        # provider terakhir) -- sebelumnya provider lain cuma lewat
+        # _ai_chat_diag yang tersembunyi kecuali AI_VERBOSE=1, jadi user
+        # gak tau provider mana saja yang dicoba dan kenapa semua gagal.
         echo "[warn: semua model provider '$provider' gagal, coba provider berikutnya...]" >&2
         _ai_breaker_record_fail "$provider"
     done
 
     echo "[error: semua provider & model gagal (cek 'ai deps' buat lihat provider mana yang aktif). Raw response terakhir:]" >&2
-    echo "$resp" | jq -c '.error // .' 2>/dev/null | _ai_head_c 300 >&2
+    # v-fix: tampilkan raw response dengan benar -- jq diam-diam gagal kalau
+    # input bukan JSON (mis. HTML 402/503 page, string plain "rate limited"),
+    # hasilnya baris kosong dan user gak tau penyebab aslinya. Coba jq dulu
+    # (ambil .error kalau ada), kalau gagal fallback ke raw string mentah.
+    local _raw_err
+    _raw_err=$(echo "$resp" | jq -r '.error.message // .error // .message // empty' 2>/dev/null)
+    if [ -z "$_raw_err" ]; then
+        _raw_err=$(printf '%s' "$resp" | _ai_head_c 300)
+    fi
+    [ -n "$_raw_err" ] && echo "$_raw_err" >&2 || echo "(response kosong)" >&2
     echo "" >&2
     trap - INT TERM
     _ai_spinner_stop "$_spin"
