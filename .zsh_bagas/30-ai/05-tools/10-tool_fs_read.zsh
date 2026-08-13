@@ -35,7 +35,12 @@ _ai_tool_read_file() {
     else
         out=$(command nl -ba -w4 -s'  ' "$path")
     fi
-    printf '%s' "$out" | _ai_head_c "${AI_FILE_MAX_CHARS:-40000}"
+    if command -v awk >/dev/null 2>&1; then
+        out=$(printf '%s' "$out" | awk "{print} NR==${AI_FILE_MAX_CHARS:-40000} {exit}")
+    else
+        out=$(printf '%s' "$out" | command python3 -c 'import sys; sys.stdout.write(sys.stdin.read(40000))' 2>/dev/null)
+    fi
+    printf '%s' "$out"
 }
 
 _ai_tool_list_dir() {
@@ -60,7 +65,11 @@ _ai_tool_list_dir() {
         echo "ERROR: executable 'ls' atau 'eza' gak ketemu di PATH"
         return 1
     fi
-    "$ls_cmd" -lah "$path" | _ai_head_n 50
+    if command -v awk >/dev/null 2>&1; then
+        "$ls_cmd" -lah "$path" 2>&1 | awk 'NR<=50'
+    else
+        "$ls_cmd" -lah "$path" 2>&1 | command head -n 50
+    fi
 }
 
 # ─── Tool Baru: count_lines ───────────────────────────────────
