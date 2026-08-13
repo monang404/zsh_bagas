@@ -42,7 +42,7 @@ _ai_chat_retry_decision() {
 
     # Cek apakah ada pesan error di dalam payload JSON meskipun HTTP status 200
     local json_error
-    json_error=$(echo "$resp" | jq -r '.error.message // .error // empty' 2>/dev/null)
+    json_error=$(printf '%s' "$resp" | jq -r '.error.message // .error // empty' 2>/dev/null)
     if [ -n "$json_error" ] && [ "$json_error" != "null" ]; then
         _ai_chat_diag "[warn] $provider/$model: API membalas dengan error: $json_error"
         # Error dari API seperti 'Model does not exist' bukan transient error, langsung lompat model
@@ -52,7 +52,7 @@ _ai_chat_retry_decision() {
     # gagal — hitung finish_reason (buat ketauan kasus kehabisan token pas
     # reasoning vs error jaringan/API beneran) sebelum retry biasa.
     local finish_reason
-    finish_reason=$(echo "$resp" | jq -r '.choices[0].finish_reason // "n/a"' 2>/dev/null)
+    finish_reason=$(printf '%s' "$resp" | jq -r '.choices[0].finish_reason // "n/a"' 2>/dev/null)
     tries=$((tries + 1))
     sleep "$AI_RETRY_DELAY"
     return 0

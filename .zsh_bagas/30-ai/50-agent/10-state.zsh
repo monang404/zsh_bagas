@@ -1,9 +1,15 @@
 # walau isinya sebenarnya masih bisa dibaca. Output ke 3 file di tmpdir biar
 # gak ada masalah delimiter kalau command-nya sendiri ada tab/newline.
+# v-fix (bagian dari rantai bug echo -- lihat 10-core/50-request_blocking.zsh
+# buat detail lengkap root cause-nya): `reply` yang masuk ke sini kerap
+# berupa JSON tool-call yang isinya kode/regex (banyak backslash), jadi
+# harus lewat printf, bukan echo, biar gak kena mangle backslash-escape zsh
+# lagi SETELAH lolos dari extraction tapi SEBELUM sempet di-parse jadi
+# tool-call beneran.
 _ai_agent_parse() {
     local reply="$1" tmpdir
     tmpdir=$(mktemp -d)
-    echo "$reply" | AI_AGENT_PARSE_OUTDIR="$tmpdir" python3 -c "
+    printf '%s' "$reply" | AI_AGENT_PARSE_OUTDIR="$tmpdir" python3 -c "
 import json, os, sys
 raw = sys.stdin.read()
 outdir = os.environ['AI_AGENT_PARSE_OUTDIR']

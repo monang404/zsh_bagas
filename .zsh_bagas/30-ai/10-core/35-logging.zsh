@@ -36,7 +36,7 @@ _ai_log() {
 _ai_log_usage() {
     _ai_secure_runtime_dir "$AI_LOG_DIR"
     local provider="$1" resp="$2"
-    echo "$resp" | jq -c --arg t "$(date '+%Y-%m-%d %H:%M:%S')" --arg prov "$provider" \
+    printf '%s' "$resp" | jq -c --arg t "$(date '+%Y-%m-%d %H:%M:%S')" --arg prov "$provider" \
         '{time:$t, provider:$prov, usage:(.usage // {})}' >> "$AI_USAGE_LOG" 2>/dev/null
     _ai_rotate_log "$AI_USAGE_LOG" "${AI_LOG_MAX_LINES:-5000}"
 }

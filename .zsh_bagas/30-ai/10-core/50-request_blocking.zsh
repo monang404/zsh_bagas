@@ -92,7 +92,7 @@ _ai_chat_request() {
             _ai_chat_diag "[trace] bangun payload buat $provider/$model (percobaan $((tries+1)))..."
             local temp
             temp=$(_ai_chat_temp_for_mode "$mode")
-            payload=$(_ai_build_chat_payload "$msgfile" "$model" "$max_toks" "$temp" "$is_reasoning_model" 0)
+            payload=$(_ai_build_chat_payload "$msgfile" "$model" "$max_toks" "$temp" "$is_reasoning_model" 0 "$provider")
 
             local curl_timeout="${AI_CURL_TIMEOUT:-45}"
             [[ "$curl_timeout" == <-> ]] || curl_timeout=45
@@ -113,13 +113,28 @@ _ai_chat_request() {
                 _ai_chat_diag "[warn] $provider/$model: request timeout setelah ${curl_timeout}s; lanjut ke model berikutnya..."
             fi
 
-            reply=$(echo "$resp" | python3 "$AI_EXTRACT_SCRIPT" 2>/dev/null)
+            # v-fix (bug ditemukan lewat trace real: DeepSeek/Cerebras/Gemini
+            # semua HTTP 200 finish_reason=stop dengan content lengkap, TAPI
+            # extraction-nya tetep kosong). Root cause: zsh builtin `echo`
+            # SECARA DEFAULT nginterpretasi backslash-escape (\n jadi newline
+            # asli, \\ jadi \, dst) -- beda sama `printf '%s'` yang ngirim
+            # byte apa adanya. Response API yang isinya kode/regex (contoh:
+            # `\d+`, `\s+` di dalam JSON ter-escape jadi `\\d+`) kena mangle
+            # SEBELUM sempet nyampe ke python, bikin json.loads gagal parse
+            # ("Expecting ',' delimiter" dkk) walau JSON aslinya valid.
+            # Direproduksi & dikonfirmasi manual: `echo "$resp" | python3 -c
+            # "json.loads(...)"` gagal buat payload yang ada backslash regex
+            # di dalamnya, sedangkan `printf '%s' "$resp" | ...` sukses --
+            # persis pola yang dipakai jalur streaming (55-request_streaming.
+            # zsh) yang emang dari awal udah bener pakai printf. Blocking path
+            # ini ketinggalan waktu itu ditulis, jadi disamain sekarang.
+            reply=$(printf '%s' "$resp" | python3 "$AI_EXTRACT_SCRIPT" 2>/dev/null)
             if [ -n "$reply" ]; then
                 _ai_spinner_stop "$_spin"
                 if [ -n "$result_meta_file" ]; then
                     printf '%s\t%s\n' "$provider" "$model" > "$result_meta_file" 2>/dev/null || true
                 fi
-                echo "$reply"
+                printf '%s\n' "$reply"
                 _ai_log_usage "$provider" "$resp"
                 trap - INT TERM
                 return 0
@@ -160,7 +175,7 @@ _ai_chat_request() {
     # hasilnya baris kosong dan user gak tau penyebab aslinya. Coba jq dulu
     # (ambil .error kalau ada), kalau gagal fallback ke raw string mentah.
     local _raw_err
-    _raw_err=$(echo "$resp" | jq -r '.error.message // .error // .message // empty' 2>/dev/null)
+    _raw_err=$(printf '%s' "$resp" | jq -r '.error.message // .error // .message // empty' 2>/dev/null)
     if [ -z "$_raw_err" ]; then
         _raw_err=$(printf '%s' "$resp" | _ai_head_c 300)
     fi
