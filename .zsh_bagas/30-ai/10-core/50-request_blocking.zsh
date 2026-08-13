@@ -21,6 +21,7 @@ _ai_chat_request() {
     # return point di bawah -- biar user liat 1 animasi mengalir yang
     # berubah context-nya, bukan spinner kedip-restart tiap ganti model.
     local _spin=""
+    _spin=$(_ai_spinner_start "Menyiapkan AI provider...")
 
     # Ctrl-C harus membatalkan request aktif dan membersihkan spinner.
     # _ai_chat_request sering dipanggil lewat command substitution (r=$(...)),
@@ -85,6 +86,7 @@ _ai_chat_request() {
         _ai_is_reasoning_model "$provider" "$model" && is_reasoning_model=1
 
         while [ $tries -lt $AI_MAX_RETRIES ]; do
+            _ai_spinner_update "$_spin" "Menghubungi $provider/$model (percobaan $((tries+1)))..."
             local temp
             temp=$(_ai_chat_temp_for_mode "$mode")
             payload=$(_ai_build_chat_payload "$msgfile" "$model" "$max_toks" "$temp" "$is_reasoning_model" 0)
