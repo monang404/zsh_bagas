@@ -1,15 +1,21 @@
 # ============================================================
 #  30-ai/60-ui/components/state.zsh — State UI Renderer
-#  AI-FIRST UX: semua feedback AI berupa inline status line,
-#  bukan box baru setiap aksi. States: Thinking, Acting, Done, Error.
+#  AI-FIRST UX v2: Blueprint §7 status line compact.
+#  Semua log [AI][...] diganti dengan icon inline:
+#
+#    [AI][WAIT]    →  ● Thinking...
+#    [AI][REQUEST] →  ● Sending...
+#    [AI][DONE]    →  ✓ Done
+#    [AI][ERROR]   →  ✗ Error
 #
 #  API:
 #    _ai_state_thinking "Searching files..."
+#    _ai_state_sending  "groq"
 #    _ai_state_acting   "Using rg" "Found 24 files"
 #    _ai_state_waiting  "rm -rf build/"
 #    _ai_state_done     "3 files changed" "42s"
 #    _ai_state_error    "Permission denied"
-#    _ai_state_step     "Planning..."   (level-1 verbosity, ditulis ke detail log juga)
+#    _ai_state_step     "Planning..."   (level-1 verbosity)
 #    _ai_state_tool     "rg" "pattern"  (level-2 verbosity)
 # ============================================================
 
@@ -26,12 +32,26 @@ typeset -g AI_LAST_DETAIL_LOG=""
 _ai_state_thinking() {
     local msg="${1:-Thinking...}"
     # Selalu tampil (semua verbosity level)
+    # Blueprint v2 §7: [AI][WAIT] → ● Thinking...
     if _ai_ui_supports_unicode 2>/dev/null; then
-        printf '%s◌%s %s\n' "$AI_C_INFO" "$AI_C_RESET" "$msg"
+        printf '%s●%s %s\n' "$AI_C_INFO" "$AI_C_RESET" "$msg"
     else
-        printf '~ %s\n' "$msg"
+        printf '* %s\n' "$msg"
     fi
     AI_LAST_DETAIL_LOG+="[thinking] $msg"$'\n'
+}
+
+# _ai_state_sending(provider?) — Blueprint v2 §7: [AI][REQUEST] → ● Sending...
+_ai_state_sending() {
+    local provider="${1:-}"
+    local msg="Sending..."
+    [ -n "$provider" ] && msg="Sending to ${provider}..."
+    if _ai_ui_supports_unicode 2>/dev/null; then
+        printf '%s●%s %s\n' "$AI_C_INFO" "$AI_C_RESET" "$msg"
+    else
+        printf '* %s\n' "$msg"
+    fi
+    AI_LAST_DETAIL_LOG+="[sending] $msg"$'\n'
 }
 
 _ai_state_acting() {

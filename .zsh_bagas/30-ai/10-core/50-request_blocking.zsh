@@ -15,6 +15,8 @@ _ai_chat_request() {
     provider_order=(${=order_str})
     local provider endpoint model keyvar apikey modelkey models_str
     local tries resp reply payload
+    # State runtime: diisi saat request berhasil, dibaca oleh ui_header
+    typeset -g AI_CURRENT_PROVIDER AI_CURRENT_MODEL
 
     # spinner mulai SEKALI di awal, dipertahankan lintas provider/model/
     # percobaan (di-update labelnya, gak di-restart) sampai salah satu
@@ -137,6 +139,9 @@ _ai_chat_request() {
             if [ -n "$reply" ]; then
                 _ai_spinner_stop "$_spin"
                 _ai_log_done "Response received in ${_req_duration}s"
+                # Simpan state runtime — dibaca ui_header
+                AI_CURRENT_PROVIDER="$provider"
+                AI_CURRENT_MODEL="$model"
                 if [ -n "$result_meta_file" ]; then
                     printf '%s\t%s\n' "$provider" "$model" > "$result_meta_file" 2>/dev/null || true
                 fi

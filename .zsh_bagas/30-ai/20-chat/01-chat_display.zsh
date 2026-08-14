@@ -1,8 +1,10 @@
 # ============================================================
 #  30-ai/20-chat/01-chat_display.zsh — reasoning di luar, jawaban
-#  bersih di dalam box. Dipakai aic/aicl (freeform chat, BUKAN
-#  kontrak JSON agent {thought,tool,args,done} yang punya jalur
-#  tampil sendiri di 50-agent/20-presentation/15-reasoning_display.zsh).
+#  plain tanpa box (Blueprint v2 §2: "Response tanpa box.").
+#  Metadata (⏱ elapsed · provider/model) menjadi satu baris di bawah.
+#
+#  Dipakai aic/aicl (freeform chat, BUKAN kontrak JSON agent {thought,tool,args,done}
+#  yang punya jalur tampil sendiri di 50-agent/).
 # ============================================================
 
 # _ai_chat_split_reply(raw) -- pisahin raw jadi thought vs jawaban.
@@ -38,9 +40,10 @@ _ai_chat_split_reply() {
     _AI_CHAT_ANSWER="$answer"
 }
 
-# _ai_chat_render(raw) -- reasoning (kalau ada) dicetak POLOS di luar
-# lewat ◌ (mesin ringkas yang sama kayak agent mode, biar konsisten:
-# max 3 poin, wrap 76 char), jawaban bersih dicetak DI DALAM box.
+# _ai_chat_render(raw) — reasoning (kalau ada) dicetak POLOS di luar
+# lewat ◌ (mesin ringkas yang sama kayak agent mode), jawaban bersih
+# dicetak PLAIN tanpa box (Blueprint v2: compact mode).
+# Metadata: ⏱ elapsed·s · provider/model dicetak di bawah jawaban.
 _ai_chat_render() {
     setopt localoptions noxtrace
     local raw="$1"
@@ -49,15 +52,38 @@ _ai_chat_render() {
     local _AI_CHAT_THOUGHT _AI_CHAT_ANSWER
     _ai_chat_split_reply "$raw"
 
+    # Reasoning: cetak sebaris tipis kalau ada
     if [ -n "$_AI_CHAT_THOUGHT" ]; then
         local disp
-        if disp=$(_ai_agent_reasoning_display "$_AI_CHAT_THOUGHT"); then
+        if disp=$(_ai_agent_reasoning_display "$_AI_CHAT_THOUGHT" 2>/dev/null); then
             _ai_ui_line "◌" "$disp"
             echo ""
         fi
     fi
 
-    local -a alines
-    alines=(${(f)_AI_CHAT_ANSWER})
-    _ai_ui_box "" "${alines[@]}"
+    # Jawaban: cetak plain, satu baris per baris
+    local line
+    while IFS= read -r line; do
+        printf '%s\n' "$line"
+    done <<< "$_AI_CHAT_ANSWER"
+
+    # Metadata: ⏱ elapsed·s · provider/model (satu baris di bawah)
+    local meta=""
+    local elapsed="${AI_LAST_ELAPSED:-}"
+    local provider="${AI_CURRENT_PROVIDER:-}"
+    local model="${AI_CURRENT_MODEL:-}"
+    if [ -n "$elapsed" ]; then
+        meta="⏱ ${elapsed}s"
+    fi
+    if [ -n "$provider" ] && [ -n "$model" ]; then
+        [ -n "$meta" ] && meta+=" ${AI_C_MUTED:-}·${AI_C_RESET:-} "
+        meta+="${provider}/${model}"
+    elif [ -n "$model" ]; then
+        [ -n "$meta" ] && meta+=" ${AI_C_MUTED:-}·${AI_C_RESET:-} "
+        meta+="$model"
+    fi
+    if [ -n "$meta" ]; then
+        echo ""
+        printf '%s%s%s\n' "${AI_C_MUTED:-}" "$meta" "${AI_C_RESET:-}"
+    fi
 }

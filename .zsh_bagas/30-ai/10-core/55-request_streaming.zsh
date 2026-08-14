@@ -18,6 +18,8 @@ _ai_chat_request_stream() {
     local provider endpoint model keyvar apikey modelkey models_str
     local tries payload resp http_status curl_exit
     local model_label_printed=0
+    # State runtime: diisi saat request berhasil, dibaca oleh ui_header
+    typeset -g AI_CURRENT_PROVIDER AI_CURRENT_MODEL
 
     _ai_log_start "Processing request"
 
@@ -119,6 +121,9 @@ _ai_chat_request_stream() {
                         printf '%s\n' "$reply"
                         _ai_log_done "Stream completed in ${_req_duration}s"
                         _ai_log_usage "$provider" "$resp"
+                        # Simpan state runtime — dibaca ui_header
+                        AI_CURRENT_PROVIDER="$provider"
+                        AI_CURRENT_MODEL="$model"
                         rm -f "$headerfile" "$statefile" "$rawfile" "$reasoningfile"
                         return 0
                     fi
@@ -132,11 +137,11 @@ _ai_chat_request_stream() {
                 fi
 
                 if [ "$curl_exit" -eq 0 ] && [ "$http_status" = "200" ] && [ "$stream_content" -eq 1 ]; then
-                    # FIX (audit Fase 7/8, HIGH-1): parity with the blocking path
-                    # -- always log usage on a successful streamed reply, so
-                    # `aistats` doesn't lose the streaming half of chat traffic.
                     _ai_log_done "Stream completed in ${_req_duration}s"
                     _ai_log_usage "$provider" "$resp"
+                    # Simpan state runtime — dibaca ui_header
+                    AI_CURRENT_PROVIDER="$provider"
+                    AI_CURRENT_MODEL="$model"
                     return 0
                 fi
 

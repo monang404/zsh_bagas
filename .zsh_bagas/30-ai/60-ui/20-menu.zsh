@@ -19,17 +19,9 @@ _ai_workspace() {
     source "$ZSH_BAGAS_DIR/30-ai/60-ui/router.zsh" 2>/dev/null || true
 
     # --- Render Workspace Header ---
-    if type ui_header >/dev/null 2>&1; then
-        ui_header
-    else
-        # Minimal fallback header
-        local model="${AI_MODEL:-GPT-5.6}"
-        local session="${AI_CURRENT_SESSION:-main}"
-        local pwd_str="${PWD/#$HOME/~}"
-        echo "${AI_C_MUTED}─────────────────────────────────────────${AI_C_RESET}"
-        echo "${AI_C_BOLD}Bagas AI${AI_C_RESET}  ${AI_C_MUTED}$session • $model • $pwd_str${AI_C_RESET}"
-        echo "${AI_C_MUTED}─────────────────────────────────────────${AI_C_RESET}"
-    fi
+    # ui_header selalu ter-load dari source di atas; baca AI_CURRENT_PROVIDER
+    # dan AI_CURRENT_MODEL yang di-set engine saat request berhasil.
+    ui_header
 
     # --- Recent context (jika ada session aktif) ---
     if [ -n "${AI_CURRENT_SESSION:-}" ] && [ "${AI_CURRENT_SESSION}" != "main" ]; then

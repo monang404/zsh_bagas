@@ -1,17 +1,18 @@
-# ============================================================
-#  30-ai/20-presentation/10-result_summary.zsh — _ai_agent_result_summary — ringkasan hasil tool 1 baris buat tampilan compact
-#  (split out of the old monolithic 30-ai/50-agent/20-presentation.zsh)
-# ============================================================
-
-# Task 1.3: ringkasan hasil tool jadi SATU BARIS buat ditampilin abis
-# icon ✓/✗ -- gak pernah nge-dump seluruh $output (apalagi JSON mentah)
-# ke layar. Full $output tetap dipakai apa adanya buat konteks LLM
-# (dikirim balik ke msgfile) & buat agent_runs/*.jsonl, cuma versi yang
-# nyampe ke terminal user yang diringkas di sini.
+# _ai_agent_result_summary(tool, output, rc)
+# Tampilkan ringkasan output tool ke terminal user.
+#
+# Strategi:
+#  - Test runner (pytest/npm/go): selalu ringkas ke "N passed/failed"
+#  - Output <= AI_AGENT_SHOW_LINES: tampilkan semua baris (default 20)
+#  - Output > AI_AGENT_SHOW_LINES: tampilkan N baris + "(+X baris lainnya)"
+#
+# AI_AGENT_SHOW_LINES: override lewat env/90-local/local.zsh (default 20)
+# Ini berbeda dari cap token LLM (3000 char di 15-run_tool.zsh) yang tidak
+# diubah — full output tetap dikirim ke AI, hanya tampilan user yang dibatasi.
 _ai_agent_result_summary() {
     setopt localoptions noxtrace
     local tool="$1" output="$2" rc="$3"
-    local total_lines first_line
+    local max_show="${AI_AGENT_SHOW_LINES:-20}"
 
     if [ -z "$output" ]; then
         if [ "$rc" -eq 0 ]; then
@@ -22,10 +23,7 @@ _ai_agent_result_summary() {
         return
     fi
 
-    # Kasus khusus run_command/run_test dengan output verbose (pytest -v,
-    # npm test, go test, dsb): jangan tampilin ratusan baris, cukup baris
-    # ringkasan "N passed/failed/..." kalau ketemu (biasanya di baris
-    # terakhir output test runner).
+    # Kasus khusus: test runner summary (pytest/npm/go test)
     local test_hits
     test_hits=$(printf '%s\n' "$output" | tail -n 8 \
         | grep -Eo '[0-9]+ (passed|failed|error(s)?|skipped|warning(s)?)' \
@@ -35,23 +33,19 @@ _ai_agent_result_summary() {
         return
     fi
 
+    local total_lines
     total_lines=$(printf '%s\n' "$output" | wc -l | tr -d ' ')
-    first_line=$(printf '%s\n' "$output" | sed -n '1p')
-    # Prefix "OK:"/"ERROR:" tools udah cukup jelas dari icon ✓/✗ yang
-    # nemenin baris ini, jadi gak perlu diulang.
-    first_line="${first_line#OK: }"
-    first_line="${first_line#ERROR: }"
-    first_line="${first_line#ERROR }"
 
-    if [ "${#first_line}" -gt 72 ]; then
-        first_line="${first_line[1,72]}…"
+    # Output pendek: tampilkan semua baris
+    if [ "$total_lines" -le "$max_show" ]; then
+        printf '%s\n' "$output"
+        return
     fi
-    [ -z "$first_line" ] && first_line="(kosong)"
 
-    if [ "$total_lines" -gt 1 ]; then
-        echo "${first_line} (+$((total_lines - 1)) baris lainnya)"
-    else
-        echo "$first_line"
-    fi
+    # Output panjang: tampilkan max_show baris + counter sisa
+    printf '%s\n' "$output" | head -n "$max_show"
+    local remaining=$(( total_lines - max_show ))
+    printf '%s(+%d baris lainnya — /details untuk lihat semua)%s\n' \
+        "${AI_C_MUTED:-}" "$remaining" "${AI_C_RESET:-}"
 }
 
