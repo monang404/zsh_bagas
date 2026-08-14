@@ -55,135 +55,116 @@ _ai_agent_finalize() {
     fi
 
     if [ "$lifecycle_state" = "COMPLETE" ]; then
-        local -a final_lines
-        final_lines=("Task completed successfully" "Files changed: ${#changed_files[@]}")
-        if [ "${#changed_files[@]}" -gt 0 ]; then
-            local cf
-            for cf in "${(k)changed_files[@]}"; do
-                final_lines+=("  - $cf")
-            done
+        # Commit 4 (implementasi_plan.md): ringkas output COMPLETE.
+        # - _ai_state_done (1 baris footer: ✓ Done · N files · Xs)
+        # - Maks 5 nama file yang berubah (+N more kalau lebih)
+        # - Diff, review, verifikasi → _ai_detail_push (akses via /details)
+        # - Box raksasa DIHAPUS, density budget terpenuhi.
+
+        # Hitung runtime
+        local _runtime_str=""
+        if [ -n "${AI_AGENT_START_TS:-}" ]; then
+            local _now_ts; _now_ts=$(date +%s)
+            local _elapsed=$(( _now_ts - AI_AGENT_START_TS ))
+            _runtime_str="${_elapsed}s"
         fi
-        # Task 2.1: touched_py_files lama diganti touched_files generik --
-        # hitung ulang jumlah file .py dari situ biar pesan akhir ("py_
-        # compile OK (N file python)") IDENTIK kayak sebelum refactor.
+
+        local _nchanged="${#changed_files[@]}"
+        local _nactions="$commands_run"
+        local _footer_sep="·"
+        _ai_ui_supports_unicode || _footer_sep="-"
+
+        # Baris footer ringkas: ✓ Done · N actions · N files changed · Xs
+        local _summary="${_nactions} actions ${_footer_sep} ${_nchanged} files changed"
+        _ai_state_done "$_summary" "$_runtime_str"
+
+        # Tampilkan maks 5 nama file (indented, muted)
+        if [ "$_nchanged" -gt 0 ]; then
+            local _shown=0 cf
+            for cf in "${(k)changed_files[@]}"; do
+                if [ "$_shown" -lt 5 ]; then
+                    printf '  %s%s%s\n' "${AI_C_MUTED:-}" "$cf" "${AI_C_RESET:-}"
+                    _shown=$(( _shown + 1 ))
+                fi
+            done
+            local _remaining=$(( _nchanged - _shown ))
+            if [ "$_remaining" -gt 0 ]; then
+                printf '  %s+%d more%s\n' "${AI_C_MUTED:-}" "$_remaining" "${AI_C_RESET:-}"
+            fi
+        fi
+
+        # Push verifikasi py/js ke detail log
         local py_touched_count=0 ptf
         for ptf in "${(k)touched_files[@]}"; do
             [[ "$ptf" == *.py ]] && py_touched_count=$((py_touched_count+1))
         done
-        if [ "$py_touched_count" -gt 0 ]; then
-            final_lines+=("Verifikasi: py_compile OK (${py_touched_count} file python)")
-        fi
-        # Task 2.4: pesan senada buat .js -- cuma nge-hitung ulang dari
-        # touched_files (SAMA pola persis kayak py_touched_count di
-        # atas), bukan verifikasi baru (sudah lolos di
-        # _ai_verify_touched_files sebelum done:true diterima).
+        [ "$py_touched_count" -gt 0 ] && \
+            _ai_detail_push "[verify] py_compile OK (${py_touched_count} file python)"
+
         local js_touched_count=0 jtf
         for jtf in "${(k)touched_files[@]}"; do
             [[ "$jtf" == *.js ]] && js_touched_count=$((js_touched_count+1))
         done
-        if [ "$js_touched_count" -gt 0 ]; then
-            final_lines+=("Verifikasi: node --check OK (${js_touched_count} file js)")
-        fi
-        # Task 2.4: npm test/lint OPSIONAL, sekali di akhir sesi --
-        # lihat komentar _ai_agent_maybe_run_npm_checks() buat syarat
-        # lengkapnya. Informational doang, gak ngubah done_flag/
-        # block_reason walau hasilnya gagal.
+        [ "$js_touched_count" -gt 0 ] && \
+            _ai_detail_push "[verify] node --check OK (${js_touched_count} file js)"
+
+        # npm test/lint ke detail log
         local npm_out
         if npm_out=$(_ai_agent_maybe_run_npm_checks "${(k)touched_files[@]}") && [ -n "$npm_out" ]; then
-            final_lines+=("Verifikasi tambahan (npm test/lint):${npm_out}")
+            _ai_detail_push "[verify] npm test/lint:${npm_out}"
         fi
 
-        # Task 4.2 (fase4_reviewer_integration) + Phase 7 (audit.md §12):
-        # a single `git diff` computation feeds BOTH the raw "Changes"
-        # section (always shown when a diff exists, independent of
-        # --no-review) and the AI auto-review (still gated by
-        # --no-review, unchanged gating/content per audit §26). Only one
-        # `git diff` invocation total, per §12's explicit "do not call
-        # git diff twice" instruction.
-        if [ "${#changed_files[@]}" -gt 0 ] && command -v git >/dev/null 2>&1 && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        # Diff + AI review ke detail log (tidak ke layar)
+        local _has_detail=0
+        if [ "$_nchanged" -gt 0 ] && command -v git >/dev/null 2>&1 && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
             local review_diff review_diffstat
             review_diff=$(git diff 2>/dev/null)
             if [ -n "$review_diff" ]; then
+                _has_detail=1
                 review_diffstat=$(git diff --stat 2>/dev/null)
-
-                # Phase 7: "Changes" section -- raw diff (guarded by the
-                # existing _ai_guard_diff truncation helper, REUSE, same
-                # AI_DIFF_MAX_CHARS as aicommit/aireview). Shown under a
-                # heading inside the same COMPLETE box (§12: "render it
-                # under a Changes heading, separately from ... the
-                # review_line text" -- not a second nested box). Each
-                # diff line becomes its own box-line element so
-                # _ai_ui_box wraps only genuinely long individual lines,
-                # rather than word-reflowing the whole diff blob.
                 local diff_guarded dl
                 diff_guarded=$(_ai_guard_diff "$review_diff" "$review_diffstat")
-                final_lines+=("" "Changes:")
+                _ai_detail_push ""
+                _ai_detail_push "[changes] git diff:"
                 while IFS= read -r dl; do
-                    final_lines+=("$dl")
+                    _ai_detail_push "$dl"
                 done <<< "$diff_guarded"
 
-                # Task 4.3: flag --no-review ($no_review=1) skips ONLY the
-                # AI-generated review text below (no API call, no "Review:"
-                # line) -- the raw Changes section above is unaffected,
-                # since it's not an AI call, just the diff already computed.
+                # AI review (gated by --no-review flag)
                 if [ "$no_review" -eq 0 ]; then
-                    local review_line=""
-                    # _ai_review_diff_core (Task 4.1, dipanggil apa adanya)
-                    # -- INFORMATIONAL, agent TIDAK nunggu jawaban buat ini
-                    # dan TIDAK pernah auto-lanjut edit lagi walau review
-                    # nemuin masalah (gak ada loop review->fix->review di
-                    # sini, ini titik BUNTU alur, cuma nambah teks ke box).
                     local review_text
                     review_text=$(_ai_review_diff_core "$review_diff" "$review_diffstat" 2>/dev/null)
                     if [ -n "$review_text" ]; then
-                        review_line="${review_text//$'\n'/ }"
+                        _ai_detail_push ""
+                        _ai_detail_push "[review] AI Review:"
+                        _ai_detail_push "$review_text"
+                        _ai_log "review" "auto review after aiagent" "$review_text"
                     else
-                        # _ai_chat_request gagal total (network/provider down)
-                        # -- review-nya dikasih catatan gagal, TAPI aiagent
-                        # TETAP lapor hasil task seperti biasa (done_flag &
-                        # box COMPLETE gak berubah sama sekali gara-gara ini).
-                        review_line="review gagal dijalankan (provider AI gak bisa dihubungi)."
+                        _ai_detail_push "[review] review gagal dijalankan (provider AI tidak bisa dihubungi)."
                     fi
-                    _ai_log "review" "auto review after aiagent" "$review_line"
-                    [ -n "$review_line" ] && final_lines+=("" "Review:" "$review_line")
                 fi
             fi
         fi
 
-        # Phase 7 footer (audit.md §23 Complete spec): combined
-        # commands_run + changed_files count. The brief's reference
-        # layout also shows separate "actions" vs "command" counts and
-        # a "retries" count; this repo's data model only cleanly
-        # supports a single combined commands_run total (no
-        # run_command-vs-other-tool split, no persisted retry_total) --
-        # per §23/§29's explicit note not to treat the reference layout
-        # as literal, this uses the single combined count instead of
-        # fabricating a second metric.
-        local _footer_sep="·"
-        _ai_ui_supports_unicode || _footer_sep="-"
-        final_lines+=("" "${commands_run} actions ${_footer_sep} ${#changed_files[@]} files changed")
-
-        _ai_ui_box "${final_icon_ok} Completed" "${final_lines[@]}"
+        # Tampilkan hint /details hanya jika ada konten detail
+        if [ "$_has_detail" -eq 1 ]; then
+            printf '\n  %sKetik /details untuk lihat diff & review lengkap.%s\n' \
+                "${AI_C_MUTED:-}" "${AI_C_RESET:-}"
+        fi
     else
         [ -z "$block_reason" ] && block_reason="Agent berhenti (step $step), alasan spesifik gak tercatat."
-        local -a final_lines
-        final_lines=("$block_reason")
-        # "Saran next step" dari reasoning TERAKHIR LLM yang udah ada
-        # ($thought) -- diringkas pakai helper Task 1.4 yang sama
-        # (_ai_agent_reasoning_display), BUKAN LLM call baru.
-        # v-fix: jangan tampilkan thought stale kalau block disebabkan
-        # kegagalan provider/LLM -- thought itu dari step SEBELUMNYA,
-        # bukan dari step yang gagal, jadi menyesatkan jika ditampilkan
-        # sebagai "Saran" padahal isinya reasoning yang gak nyambung
-        # dengan penyebab kegagalan.
+        # BLOCKED: tetap pakai box ringkas (maks 2 baris isi)
         local hint
         local _show_hint=1
         [[ "$block_reason" == *"LLM/provider request gagal"* ]] && _show_hint=0
+        local -a _block_lines
+        _block_lines=("$block_reason")
         if [ "$_show_hint" -eq 1 ] && hint=$(_ai_agent_reasoning_display "$thought"); then
-            final_lines+=("Saran: ${hint//$'\n'/ }")
+            _block_lines+=("Saran: ${hint//$'\n'/ }")
         fi
-        _ai_ui_box "${final_icon_bad} Task blocked" "${final_lines[@]}"
+        _ai_ui_box "${final_icon_bad} Task blocked" "${_block_lines[@]}"
     fi
+
 
     return 0
 }

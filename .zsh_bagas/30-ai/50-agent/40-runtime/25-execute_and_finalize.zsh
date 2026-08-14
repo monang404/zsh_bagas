@@ -88,6 +88,19 @@ rm -f -- "$state_dir/cancelled"
 
 local exec_status=0
 {
+# Commit 6 (implementasi_plan.md): wire ui_agent_start sebagai satu-satunya
+# sumber render awal agent — panggil SEBELUM execute loop, bukan cetak
+# header sendiri di loop. Juga clear detail log untuk session baru.
+if type _ai_detail_clear >/dev/null 2>&1; then
+    _ai_detail_clear
+fi
+# Set timestamp awal untuk runtime calculation di finalize.zsh
+export AI_AGENT_START_TS=$(date +%s)
+# Tampilkan start header via ui_agent_start (hanya di verbosity≥1)
+if [ "${AI_VERBOSITY:-0}" -ge 1 ] && type ui_agent_start >/dev/null 2>&1; then
+    ui_agent_start "$goal" "$max_step"
+fi
+
     _ai_agent_execute_loop "$state_dir" "$msgfile" "$checkpoint_file" "$goal" \
         "$step_offset" "$run_slug" "$runs_logfile" "$max_step"
     exec_status=$?

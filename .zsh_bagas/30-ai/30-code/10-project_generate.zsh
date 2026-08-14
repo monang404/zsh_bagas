@@ -28,12 +28,29 @@ _ai_project_generate() {
     local gen_tries=0
     has_markers=0
     generation_ok=0
-    echo "Generating project..."
+
+    # Commit 5 (implementasi_plan.md): tampilkan progress visual tiap attempt.
+    # ui_progress dari components/progress.zsh — bukan diam total lagi.
+    # Gunakan ui_timeline jika tersedia untuk tampilan tahap bertingkat.
+    local _gen_stages="Generating project"
+    if [ "$gen_max_tries" -gt 1 ]; then
+        _gen_stages="Generating project"$'\n'"Retrying (format reminder)"
+    fi
+
     while [ $gen_tries -lt $gen_max_tries ]; do
         gen_tries=$((gen_tries + 1))
+
+        # Tampilkan progress bar — update setiap attempt
+        if type ui_progress >/dev/null 2>&1; then
+            ui_progress "$gen_tries" "$gen_max_tries" "Generating..."
+        else
+            printf '● Generating... (%d/%d)\n' "$gen_tries" "$gen_max_tries"
+        fi
+
         local this_prompt="$prompt"
         if [ $gen_tries -gt 1 ]; then
-            echo "[info] percobaan sebelumnya gak nulis format '### FILE:', ulang dengan reminder lebih tegas ($gen_tries/$gen_max_tries)..." >&2
+            printf '%s  ↻ Format retry %d/%d — menambahkan format reminder%s\n' \
+                "${AI_C_MUTED:-}" "$gen_tries" "$gen_max_tries" "${AI_C_RESET:-}" >&2
             this_prompt="$prompt
 
 INGAT: jawaban HARUS dimulai dari baris '### FILE: <nama_file>' -- jangan tulis penjelasan/narasi apapun sebelum penanda itu, dan jangan ada satupun file yang ditulis tanpa penanda itu di depannya."
@@ -41,7 +58,8 @@ INGAT: jawaban HARUS dimulai dari baris '### FILE: <nama_file>' -- jangan tulis 
         _ai_quick "$gen_sysprompt" "$this_prompt" smart "${AI_TASK_PROVIDER_ORDER_BIG[*]}" "${AI_PROJECT_MAX_TOKS:-3500}" > "$logfile"
         local gen_rc=$?
         if [ $gen_rc -ne 0 ]; then
-            echo "[error] provider generation gagal (exit $gen_rc), tidak akan menyimpan error response sebagai source code." >&2
+            printf '%s  ✗ Provider gagal (exit %d), mencoba lagi...%s\n' \
+                "${AI_C_ERR:-}" "$gen_rc" "${AI_C_RESET:-}" >&2
             continue
         fi
         generation_ok=1
@@ -56,3 +74,4 @@ INGAT: jawaban HARUS dimulai dari baris '### FILE: <nama_file>' -- jangan tulis 
         fi
     done
 }
+

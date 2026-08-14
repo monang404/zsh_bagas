@@ -28,6 +28,9 @@
 _ai_agent_render_step_start() {
     setopt localoptions noxtrace
     local step="$1" tool="$2" args_disp="$3"
+    # Commit 3 (implementasi_plan.md): gate tree render ke verbosity≥1.
+    # Di level 0 (default Minimal) tulis ke detail log saja — tidak ke layar.
+    local tree_line
     local branch
     if _ai_ui_supports_unicode; then
         branch="├─"
@@ -35,10 +38,19 @@ _ai_agent_render_step_start() {
         branch="|-"
     fi
     if [ -n "$args_disp" ]; then
-        echo "  ${AI_C_MUTED}${branch}${AI_C_RESET} ${step}  ${AI_C_BOLD}${tool}${AI_C_RESET}  ${AI_C_DIM}${args_disp}${AI_C_RESET}"
+        tree_line="  ${branch} ${step}  ${tool}  ${args_disp}"
     else
-        echo "  ${AI_C_MUTED}${branch}${AI_C_RESET} ${step}  ${AI_C_BOLD}${tool}${AI_C_RESET}"
+        tree_line="  ${branch} ${step}  ${tool}"
     fi
+    if [ "${AI_VERBOSITY:-0}" -ge 1 ]; then
+        if [ -n "$args_disp" ]; then
+            echo "  ${AI_C_MUTED}${branch}${AI_C_RESET} ${step}  ${AI_C_BOLD}${tool}${AI_C_RESET}  ${AI_C_DIM}${args_disp}${AI_C_RESET}"
+        else
+            echo "  ${AI_C_MUTED}${branch}${AI_C_RESET} ${step}  ${AI_C_BOLD}${tool}${AI_C_RESET}"
+        fi
+    fi
+    # Selalu push ke detail log untuk /details
+    _ai_detail_push "[tool-start] step=${step} tool=${tool} args=${args_disp}"
 }
 
 _ai_agent_render_step_result() {
@@ -57,7 +69,13 @@ _ai_agent_render_step_result() {
         icon="✗"; color="$AI_C_ERR"
         _ai_ui_supports_unicode || icon="x"
     fi
-    echo "  ${AI_C_MUTED}${cont}${AI_C_RESET}     ${color}${icon}${AI_C_RESET} ${result_disp}"
+    # Commit 3: hanya tampilkan ke layar di verbosity≥1
+    if [ "${AI_VERBOSITY:-0}" -ge 1 ]; then
+        echo "  ${AI_C_MUTED}${cont}${AI_C_RESET}     ${color}${icon}${AI_C_RESET} ${result_disp}"
+    fi
+    # Selalu push ke detail log
+    local status_tag; [ "$ok" -eq 0 ] && status_tag="ok" || status_tag="fail"
+    _ai_detail_push "[tool-result] ${status_tag}: ${result_disp}"
 }
 
 # _ai_agent_render_retry(current, max) — "↻ retrying... (N/MAX)" line,
@@ -73,5 +91,9 @@ _ai_agent_render_retry() {
     else
         cont="|"; icon="~"
     fi
-    echo "  ${AI_C_MUTED}${cont}${AI_C_RESET}     ${AI_C_WARN}${icon}${AI_C_RESET} retrying... (${current}/${max})"
+    # Gate retry line ke verbosity≥1, push ke detail log di level 0
+    if [ "${AI_VERBOSITY:-0}" -ge 1 ]; then
+        echo "  ${AI_C_MUTED}${cont}${AI_C_RESET}     ${AI_C_WARN}${icon}${AI_C_RESET} retrying... (${current}/${max})"
+    fi
+    _ai_detail_push "[tool-retry] attempt ${current}/${max}"
 }

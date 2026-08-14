@@ -1,44 +1,36 @@
 # ============================================================
 #  30-ai/60-ui/20-menu.zsh — AI Workspace (AI-FIRST UX)
-#  Paradigma baru: satu prompt utama, AI menentukan mode.
-#  Menggantikan menu panjang 27-item dengan workspace prompt.
+#  Commit 7 (implementasi_plan.md): konsolidasi entry point.
+#  _ai_workspace sekarang DELEGATE ke ui_home() dari screens/home.zsh
+#  sebagai satu-satunya sumber render layar awal — menghilangkan
+#  duplikasi prompt logic antara dua file ini.
 # ============================================================
 
-# _ai_workspace() — tampilkan AI Workspace dengan single prompt.
-# Input user langsung di-dispatch ke engine AI yang sudah ada.
-# Prefix "/" membuka Command Palette.
+# _ai_workspace() — entry point tunggal untuk layar awal AI.
+# Delegate rendering ke ui_home() (screens/home.zsh) yang sudah
+# punya git context, session hint, dan prompt. Routing tetap di sini.
 _ai_workspace() {
     local ZSH_BAGAS_DIR="${ZSH_BAGAS:-$HOME/.zsh_bagas}"
 
-    # Load komponen UI
-    source "$ZSH_BAGAS_DIR/30-ai/60-ui/components/header.zsh" 2>/dev/null || true
-    source "$ZSH_BAGAS_DIR/30-ai/60-ui/components/palette.zsh" 2>/dev/null || true
-    source "$ZSH_BAGAS_DIR/30-ai/60-ui/components/state.zsh" 2>/dev/null || true
+    # Load komponen UI + screen home
+    source "$ZSH_BAGAS_DIR/30-ai/60-ui/components/header.zsh"    2>/dev/null || true
+    source "$ZSH_BAGAS_DIR/30-ai/60-ui/components/palette.zsh"   2>/dev/null || true
+    source "$ZSH_BAGAS_DIR/30-ai/60-ui/components/state.zsh"     2>/dev/null || true
     source "$ZSH_BAGAS_DIR/30-ai/60-ui/components/disclosure.zsh" 2>/dev/null || true
     source "$ZSH_BAGAS_DIR/30-ai/60-ui/components/verbosity.zsh" 2>/dev/null || true
-    source "$ZSH_BAGAS_DIR/30-ai/60-ui/router.zsh" 2>/dev/null || true
+    source "$ZSH_BAGAS_DIR/30-ai/60-ui/router.zsh"               2>/dev/null || true
+    source "$ZSH_BAGAS_DIR/30-ai/60-ui/screens/home.zsh"         2>/dev/null || true
 
-    # --- Render Workspace Header ---
-    # ui_header selalu ter-load dari source di atas; baca AI_CURRENT_PROVIDER
-    # dan AI_CURRENT_MODEL yang di-set engine saat request berhasil.
-    ui_header
-
-    # --- Recent context (jika ada session aktif) ---
-    if [ -n "${AI_CURRENT_SESSION:-}" ] && [ "${AI_CURRENT_SESSION}" != "main" ]; then
-        echo "${AI_C_MUTED}  Session: ${AI_CURRENT_SESSION}${AI_C_RESET}"
-    fi
-
-    # --- Prompt utama ---
-    echo ""
+    # Delegate render + prompt ke ui_home (single source of truth).
+    # ui_home() mengembalikan teks yang diketik user via echo.
     local user_input=""
-
-    if command -v gum >/dev/null 2>&1; then
-        user_input=$(gum input \
-            --placeholder "Ask Bagas AI anything... (/ untuk Command Palette)" \
-            --prompt "${AI_C_PRIMARY}> ${AI_C_RESET}" \
-            --width 0)
+    if type ui_home >/dev/null 2>&1; then
+        user_input=$(ui_home)
     else
-        printf '%s> %s' "${AI_C_PRIMARY}" "${AI_C_RESET}"
+        # Fallback minimal jika screens/home.zsh belum ter-load
+        ui_header 2>/dev/null || true
+        echo ""
+        printf '%s> %s' "${AI_C_PRIMARY:-}" "${AI_C_RESET:-}"
         read -r user_input
     fi
 
@@ -51,14 +43,12 @@ _ai_workspace() {
         if type ui_router >/dev/null 2>&1; then
             ui_router "$slash_cmd"
         else
-            echo "${AI_C_WARN}Router tidak tersedia.${AI_C_RESET}"
+            printf '%sRouter tidak tersedia.%s\n' "${AI_C_WARN:-}" "${AI_C_RESET:-}"
         fi
         return
     fi
 
     # Semua input lain → langsung dispatch ke engine AI
-    # Engine (dispatcher) sudah punya logika: subcommand typo-check,
-    # fallback ke aic() (chat), dan AI otomatis memilih mode via prompt.
     ai "$user_input"
 }
 

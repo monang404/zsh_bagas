@@ -9,8 +9,8 @@
 #    AI_CURRENT_SESSION  — nama session aktif
 #    AI_TOKEN_USAGE      — jumlah token terakhir (opsional)
 #
-#  Format:
-#    Bagas AI · session · provider/model · ~/path [· dirty Nf] [· Ntok]
+#  Format (Claude Code style):
+#    Bagas AI • session • provider/model • ~/path [• dirty Nf] [• Ntok]
 # ============================================================
 
 ui_header() {
@@ -31,7 +31,7 @@ ui_header() {
         model_label="$provider"
     fi
     # Kalau belum ada request sukses: tampilkan "(no model)" agar jelas
-    [ -z "$model_label" ] && model_label="${AI_C_MUTED}no model yet${AI_C_RESET}"
+    [ -z "$model_label" ] && model_label="${AI_C_MUTED:-}no model yet${AI_C_RESET:-}"
 
     # --- Git info ---
     local branch_info=""
@@ -40,19 +40,19 @@ ui_header() {
         branch=$(git branch --show-current 2>/dev/null)
         changed=$(git status --porcelain 2>/dev/null | wc -l | tr -d ' ')
         if [ "$changed" -gt 0 ]; then
-            branch_info="${branch:+$branch }${AI_C_WARN}dirty ${changed}f${AI_C_RESET}"
+            branch_info="${branch:+$branch }${AI_C_WARN:-}dirty ${changed}f${AI_C_RESET:-}"
         else
             branch_info="${branch:-}"
         fi
     fi
 
     # --- Compose satu baris header (tanpa border) ---
-    local parts="${AI_C_BOLD}Bagas AI${AI_C_RESET}"
-    parts+=" ${AI_C_MUTED}·${AI_C_RESET} ${AI_C_PRIMARY}$session${AI_C_RESET}"
-    parts+=" ${AI_C_MUTED}·${AI_C_RESET} $model_label"
-    parts+=" ${AI_C_MUTED}·${AI_C_RESET} ${AI_C_MUTED}$pwd_str${AI_C_RESET}"
-    [ -n "$branch_info" ] && parts+=" ${AI_C_MUTED}·${AI_C_RESET} $branch_info"
-    [ -n "$token_str"   ] && parts+=" ${AI_C_MUTED}·${AI_C_RESET} ${AI_C_MUTED}${token_str}tok${AI_C_RESET}"
+    local parts="${AI_C_BOLD:-}Bagas AI${AI_C_RESET:-}"
+    parts+=" ${AI_C_MUTED:-}•${AI_C_RESET:-} ${AI_C_PRIMARY:-}$session${AI_C_RESET:-}"
+    parts+=" ${AI_C_MUTED:-}•${AI_C_RESET:-} $model_label"
+    parts+=" ${AI_C_MUTED:-}•${AI_C_RESET:-} ${AI_C_MUTED:-}$pwd_str${AI_C_RESET:-}"
+    [ -n "$branch_info" ] && parts+=" ${AI_C_MUTED:-}•${AI_C_RESET:-} $branch_info"
+    [ -n "$token_str"   ] && parts+=" ${AI_C_MUTED:-}•${AI_C_RESET:-} ${AI_C_MUTED:-}${token_str}tok${AI_C_RESET:-}"
 
     # --- Cetak: 1 baris saja ---
     echo "$parts"

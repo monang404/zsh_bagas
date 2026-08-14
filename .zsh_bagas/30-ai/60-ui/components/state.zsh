@@ -23,20 +23,22 @@
 : "${AI_C_RESET:=}" "${AI_C_BOLD:=}" "${AI_C_MUTED:=}"
 : "${AI_C_PRIMARY:=}" "${AI_C_OK:=}" "${AI_C_WARN:=}" "${AI_C_ERR:=}" "${AI_C_INFO:=}"
 
-# Verbosity level default = 1 (Normal) jika belum di-set
-: "${AI_VERBOSITY:=1}"
+# Verbosity level default = 0 (Minimal) jika belum di-set
+: "${AI_VERBOSITY:=0}"
 
 # Buffer log detail untuk /details
 typeset -g AI_LAST_DETAIL_LOG=""
 
 _ai_state_thinking() {
     local msg="${1:-Thinking...}"
-    # Selalu tampil (semua verbosity level)
-    # Blueprint v2 §7: [AI][WAIT] → ● Thinking...
-    if _ai_ui_supports_unicode 2>/dev/null; then
-        printf '%s●%s %s\n' "$AI_C_INFO" "$AI_C_RESET" "$msg"
-    else
-        printf '* %s\n' "$msg"
+    # Level 1+: tampilkan status proses; level 0 (Minimal) = diam
+    # Blueprint v2 §7: reasoning internal disembunyikan di default (level 0)
+    if [ "${AI_VERBOSITY:-0}" -ge 1 ]; then
+        if _ai_ui_supports_unicode 2>/dev/null; then
+            printf '%s●%s %s\n' "$AI_C_INFO" "$AI_C_RESET" "$msg"
+        else
+            printf '* %s\n' "$msg"
+        fi
     fi
     AI_LAST_DETAIL_LOG+="[thinking] $msg"$'\n'
 }
@@ -46,10 +48,13 @@ _ai_state_sending() {
     local provider="${1:-}"
     local msg="Sending..."
     [ -n "$provider" ] && msg="Sending to ${provider}..."
-    if _ai_ui_supports_unicode 2>/dev/null; then
-        printf '%s●%s %s\n' "$AI_C_INFO" "$AI_C_RESET" "$msg"
-    else
-        printf '* %s\n' "$msg"
+    # Level 1+: tampilkan saja di atas verbosity minimal
+    if [ "${AI_VERBOSITY:-0}" -ge 1 ]; then
+        if _ai_ui_supports_unicode 2>/dev/null; then
+            printf '%s●%s %s\n' "$AI_C_INFO" "$AI_C_RESET" "$msg"
+        else
+            printf '* %s\n' "$msg"
+        fi
     fi
     AI_LAST_DETAIL_LOG+="[sending] $msg"$'\n'
 }
@@ -58,7 +63,7 @@ _ai_state_acting() {
     local tool="${1:-}"
     local detail="${2:-}"
     # Level 1+: tampilkan aksi
-    if [ "${AI_VERBOSITY:-1}" -ge 1 ]; then
+    if [ "${AI_VERBOSITY:-0}" -ge 1 ]; then
         if _ai_ui_supports_unicode 2>/dev/null; then
             if [ -n "$detail" ]; then
                 printf '%s→%s %s  %s%s%s\n' "$AI_C_PRIMARY" "$AI_C_RESET" "$tool" "$AI_C_MUTED" "$detail" "$AI_C_RESET"
@@ -112,7 +117,7 @@ _ai_state_error() {
 # Level-1 verbosity: step progress
 _ai_state_step() {
     local msg="$1"
-    if [ "${AI_VERBOSITY:-1}" -ge 1 ]; then
+    if [ "${AI_VERBOSITY:-0}" -ge 1 ]; then
         if _ai_ui_supports_unicode 2>/dev/null; then
             printf '%s●%s %s\n' "$AI_C_INFO" "$AI_C_RESET" "$msg"
         else
@@ -125,7 +130,7 @@ _ai_state_step() {
 # Level-2 verbosity: tool detail
 _ai_state_tool() {
     local tool="$1" args="$2"
-    if [ "${AI_VERBOSITY:-1}" -ge 2 ]; then
+    if [ "${AI_VERBOSITY:-0}" -ge 2 ]; then
         printf '%sTool:%s %s  %s%s%s\n' \
             "$AI_C_MUTED" "$AI_C_RESET" \
             "$tool" \
@@ -137,7 +142,7 @@ _ai_state_tool() {
 # Level-3: raw debug line
 _ai_state_debug() {
     local msg="$1"
-    if [ "${AI_VERBOSITY:-1}" -ge 3 ]; then
+    if [ "${AI_VERBOSITY:-0}" -ge 3 ]; then
         printf '%s[DEBUG] %s%s\n' "$AI_C_MUTED" "$msg" "$AI_C_RESET"
     fi
     AI_LAST_DETAIL_LOG+="[debug] $msg"$'\n'

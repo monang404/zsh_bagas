@@ -36,6 +36,32 @@ _ai_ui_box() {
     shift
     local -a lines=("$@")
 
+    local is_approval=0
+    if [[ "$title" == *"Approval"* ]] || [[ "$title" == *"approval"* ]]; then
+        is_approval=1
+    fi
+
+    # Jika BUKAN approval, cetak polos (rata kiri, tanpa padding box)
+    if [ "$is_approval" -eq 0 ]; then
+        if [ -n "$title" ]; then
+            local accent
+            accent=$(_ai_ui_box_accent "$title")
+            echo "${accent}${AI_C_BOLD:-}${title}${AI_C_RESET:-}"
+        fi
+        local line subline
+        for line in "${lines[@]}"; do
+            if [ "$line" = "---" ]; then
+                echo "${AI_C_MUTED:-}---${AI_C_RESET:-}"
+                continue
+            fi
+            for subline in "${(f)line}"; do
+                echo "$subline"
+            done
+        done
+        return 0
+    fi
+
+    # JIKA APPROVAL: Gunakan box minimalis
     local width inner
     width=$(_ai_ui_width)
     inner=$(( width - 2 ))
@@ -43,7 +69,7 @@ _ai_ui_box() {
 
     local tl tr bl br hz vt
     if _ai_ui_supports_unicode; then
-        tl="╭"; tr="╮"; bl="╰"; br="╯"; hz="─"; vt="│"
+        tl="┌"; tr="┐"; bl="└"; br="┘"; hz="─"; vt="│"
     else
         tl="+"; tr="+"; bl="+"; br="+"; hz="-"; vt="|"
     fi
@@ -51,55 +77,50 @@ _ai_ui_box() {
     local accent
     accent=$(_ai_ui_box_accent "$title")
 
-    # top border, judul ditempel di kiri: ╭─ TITLE ──────╮
-    # (lebar/fill dihitung dari title POLOS dulu, warna baru
-    # ditempel pas echo -- lihat catatan di 02-ui_colors.zsh)
-    local title_str="" title_len=0
-    if [ -n "$title" ]; then
-        title_str=" $title "
-        title_len=${#title_str}
-    fi
-    local fill=$(( inner - 1 - title_len ))
-    [ "$fill" -lt 0 ] && fill=0
+    # Top border (rata box klasik tapi compact)
+    local fill=$(( inner ))
     local top_fill="" i
     for (( i = 0; i < fill; i++ )); do top_fill+="$hz"; done
-    echo "${accent}${tl}${hz}${AI_C_BOLD}${title_str}${AI_C_RESET}${accent}${top_fill}${tr}${AI_C_RESET}"
-
-    # body: tiap line dipecah per newline ASLI dulu, tiap sub-baris
-    # di-wrap ke inner width dikurangi padding " x "
+    echo "${accent}${tl}${top_fill}${tr}${AI_C_RESET:-}"
+    
+    # Body
     local avail=$(( inner - 2 ))
     [ "$avail" -lt 4 ] && avail=4
     local line subline wrapped pad padstr
-    local div_l div_r div_hz
-    if _ai_ui_supports_unicode; then
-        div_l="├"; div_r="┤"; div_hz="─"
-    else
-        div_l="+"; div_r="+"; div_hz="-"
+    
+    # Title dalam box (baris pertama)
+    if [ -n "$title" ]; then
+        pad=$(( avail - ${#title} ))
+        [ "$pad" -lt 0 ] && pad=0
+        padstr=""
+        for (( i = 0; i < pad; i++ )); do padstr+=" "; done
+        echo "${accent}${vt}${AI_C_RESET:-} ${AI_C_BOLD:-}${title}${AI_C_RESET:-}${padstr} ${accent}${vt}${AI_C_RESET:-}"
+        # Empty line
+        padstr=""
+        for (( i = 0; i < avail; i++ )); do padstr+=" "; done
+        echo "${accent}${vt}${AI_C_RESET:-} ${padstr} ${accent}${vt}${AI_C_RESET:-}"
     fi
 
+    local line_count=0
     for line in "${lines[@]}"; do
-        if [ "$line" = "---" ]; then
-            # Gambar divider separator
-            local div_fill="" i
-            for (( i = 0; i < inner; i++ )); do div_fill+="$div_hz"; done
-            echo "${accent}${div_l}${div_fill}${div_r}${AI_C_RESET}"
-            continue
-        fi
-        
+        if [ "$line" = "---" ]; then continue; fi
         for subline in "${(f)line}"; do
             while IFS= read -r wrapped; do
+                [ "$line_count" -ge 4 ] && break 2 # Maks 4 baris isi
                 pad=$(( avail - ${#wrapped} ))
                 [ "$pad" -lt 0 ] && pad=0
                 padstr=""
                 for (( i = 0; i < pad; i++ )); do padstr+=" "; done
-                echo "${accent}${vt}${AI_C_RESET} $(_ai_ui_highlight_body "$wrapped")${padstr} ${accent}${vt}${AI_C_RESET}"
+                echo "${accent}${vt}${AI_C_RESET:-} $(_ai_ui_highlight_body "$wrapped")${padstr} ${accent}${vt}${AI_C_RESET:-}"
+                line_count=$((line_count + 1))
             done < <(_ai_ui_wrap "$subline" "$avail")
         done
     done
 
+    # Bottom border
     local bottom_fill="" j
     for (( j = 0; j < inner; j++ )); do bottom_fill+="$hz"; done
-    echo "${accent}${bl}${bottom_fill}${br}${AI_C_RESET}"
+    echo "${accent}${bl}${bottom_fill}${br}${AI_C_RESET:-}"
 }
 
 # _ai_ui_step_rule(step, max_step) — garis pemisah tipis + progres

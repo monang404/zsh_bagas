@@ -64,22 +64,17 @@ _ai_agent_execute_loop() {
         fi
         [ $_gp_status -eq 1 ] && break
 
-        # v-fix (UI polish, item #3+#4): blank-line polos sebelum tiap
-        # step diganti garis pemisah + "Step N/MAX" biar step baru
-        # gampang dibedain pas scroll cepat, dan user tau posisinya
-        # sekarang di mana dari batas AI_AGENT_MAX_STEPS. Cuma
-        # tampilan -- gak ngubah kondisi loop/step counter apa pun.
-        echo ""
-        _ai_ui_step_rule "$step" "$max_step"
-        # Phase 3 (audit.md, fixes B-003): show the model's actual
-        # reasoning text (via the existing _ai_agent_reasoning_display
-        # summarizer, unchanged) instead of the literal "Thinking..."
-        # placeholder. Guarded the same way finalize.zsh already guards
-        # its own call to this helper: no output at all when $thought
-        # is empty/whitespace, so no blank reasoning line appears.
-        local _step_reasoning
-        if _step_reasoning=$(_ai_agent_reasoning_display "$thought"); then
-            _ai_ui_line "◌" "$_step_reasoning"
+        # Commit 2 (implementasi_plan.md): gate step-rule + reasoning di
+        # belakang verbosity check sesuai spec. Level 0 (default Minimal)
+        # diam total — garis "Step N/MAX" dan "◌ reasoning" adalah proses-
+        # internal noise untuk task sederhana. Level 1+ tetap menampilkannya.
+        if [ "${AI_VERBOSITY:-0}" -ge 1 ]; then
+            echo ""
+            _ai_ui_step_rule "$step" "$max_step"
+            local _step_reasoning
+            if _step_reasoning=$(_ai_agent_reasoning_display "$thought"); then
+                _ai_ui_line "◌" "$_step_reasoning"
+            fi
         fi
 
         _ai_agent_exec_check_done_rejections
