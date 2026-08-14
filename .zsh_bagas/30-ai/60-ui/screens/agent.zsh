@@ -1,27 +1,22 @@
 # ============================================================
-#  30-ai/60-ui/screens/agent.zsh — Agent Dashboard
-#  AI-FIRST UX: satu hero box dengan internal divider (---).
-#  State functions dari components/state.zsh dipakai di luar box
-#  untuk live streaming updates; hero box dirender hanya di awal
-#  dan di akhir (Done/Error).
+#  30-ai/60-ui/screens/agent.zsh — Agent State Renderer
+#  Blueprint v2 §4: Agent memakai state machine, tanpa hero box.
+#  States: Idle → Thinking → Acting → Approval → Done/Error
 # ============================================================
 
-# ui_agent_start(goal, total_steps) — render hero box awal agent
+# ui_agent_start(goal, total_steps) — Blueprint v2 §4: compact state
 ui_agent_start() {
     local goal="${1:-Running...}"
     local total="${2:-?}"
-
-    _ai_ui_box "AI Agent" \
-        "Goal: $goal" \
-        "---" \
-        "Steps: $total" \
-        "Status: RUNNING"
+    _ai_state_step "$goal"
+    if [ "$total" != "?" ] && [ "$total" != "" ]; then
+        printf '  %sSteps: %s%s\n' "${AI_C_MUTED:-}" "$total" "${AI_C_RESET:-}"
+    fi
     echo ""
 }
 
 # ui_agent_dashboard(action, steps_str, current_idx, output, next_action)
-# Render hero box penuh dengan progress + timeline. Cocok dipanggil
-# saat agent selesai atau saat perlu tampilkan state lengkap.
+# Blueprint v2 §4: compact timeline tanpa box besar.
 ui_agent_dashboard() {
     local action="$1"
     local steps_str="$2"
@@ -29,89 +24,60 @@ ui_agent_dashboard() {
     local output="$4"
     local next_action="$5"
 
-    clear
+    # Status aksi saat ini
+    _ai_state_step "$action"
 
-    local -a lines=()
-    lines+=("$action")
-    lines+=("---")
-
-    # Progress
-    local total=1
+    # Timeline compact
     if [[ -n "$steps_str" ]]; then
+        local total=1
         total=$(printf '%s\n' "$steps_str" | grep -c '.' || echo 1)
-    fi
-    lines+=("Progress $current_idx/$total")
+        printf '  Progress %s/%s\n' "$current_idx" "$total"
 
-    # Progress bar (max 20 chars, aman di 80 cols)
-    local bar_len=20
-    local filled=$(( bar_len * current_idx / (total > 0 ? total : 1) ))
-    local bar="" i
-    for (( i = 0; i < filled; i++ )); do bar+="█"; done
-    for (( i = filled; i < bar_len; i++ )); do bar+="░"; done
-    lines+=("$bar")
-    lines+=("---")
-
-    # Timeline
-    if [[ -n "$steps_str" ]]; then
         local idx=1
         while IFS= read -r step_line; do
             [ -z "$step_line" ] && continue
             if (( idx < current_idx )); then
-                lines+=("✓ $step_line")
+                printf '  %s✓%s %s\n' "${AI_C_OK:-}" "${AI_C_RESET:-}" "$step_line"
             elif (( idx == current_idx )); then
-                lines+=("● $step_line")
+                printf '  %s●%s %s\n' "${AI_C_INFO:-}" "${AI_C_RESET:-}" "$step_line"
             else
-                lines+=("○ $step_line")
+                printf '  %s○%s %s\n' "${AI_C_MUTED:-}" "${AI_C_RESET:-}" "$step_line"
             fi
             (( idx++ ))
         done <<< "$steps_str"
     fi
 
-    # Current command / tool output
+    # Output / command saat ini
     if [[ -n "$output" ]]; then
-        lines+=("---")
-        lines+=("Current command")
-        lines+=("$output")
+        echo ""
+        printf '  %s%s%s\n' "${AI_C_MUTED:-}" "$output" "${AI_C_RESET:-}"
     fi
 
-    # Next action
-    if [[ -n "$next_action" ]]; then
-        lines+=("---")
-        lines+=("Next")
-        lines+=("$next_action")
-    fi
-
-    _ai_ui_box "AI Agent RUNNING" "${lines[@]}"
     echo ""
 }
 
 # ui_agent_done(files_changed, runtime, summary_items...)
-# Render final SUCCESS box sesuai mockup blueprint.
+# Blueprint v2: compact done report tanpa box besar.
 ui_agent_done() {
     local files_changed="${1:-0}"
     local runtime="${2:-?}"
     shift 2
     local -a items=("$@")
 
-    local -a lines=()
-    lines+=("Files: $files_changed")
-    lines+=("Time:  $runtime")
+    _ai_state_done "Files: $files_changed" "$runtime"
 
     if [ "${#items[@]}" -gt 0 ]; then
-        lines+=("---")
         local item
         for item in "${items[@]}"; do
-            lines+=("✓ $item")
+            printf '  %s✓%s %s\n' "${AI_C_OK:-}" "${AI_C_RESET:-}" "$item"
         done
     fi
-
-    _ai_ui_box "SUCCESS" "${lines[@]}"
     echo ""
 }
 
 # ui_agent_error(reason)
 ui_agent_error() {
     local reason="${1:-Unknown error}"
-    _ai_ui_box "FAILED" "$reason"
+    _ai_state_error "$reason"
     echo ""
 }
