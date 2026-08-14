@@ -35,22 +35,22 @@ _ai_ui_colors_init() {
         AI_C_RESET=$'\e[0m'
         AI_C_BOLD=$'\e[1m'
         AI_C_DIM=$'\e[2m'
-        # v-fix (UI polish, item #5): pindah dari kode 256-warna
-        # (38;5;N) ke kode ANSI dasar (30-37/90-97). Kode dasar
-        # di-remap terminal sesuai TEMA warna user sendiri (banyak
-        # setup Termux/terminal punya palet 16-warna custom biar
-        # kontras pas di light/dark), sedangkan 256-warna selalu pakai
-        # RGB xterm baku apa adanya -- gampang keliatan pucat/kurang
-        # kontras kalau usernya pakai terminal background terang.
-        AI_C_PRIMARY=$'\e[94m'   # biru terang -- info umum
-        AI_C_ACCENT=$'\e[95m'    # magenta terang -- aksen header/hero
-        AI_C_OK=$'\e[92m'        # hijau terang -- sukses/approve
-        AI_C_ERR=$'\e[91m'       # merah terang -- gagal/blocked
-        AI_C_WARN=$'\e[93m'      # kuning terang -- BUTUH AKSI (approval)
-        AI_C_INFO=$'\e[94m'      # biru terang -- reasoning/progress (beda dari WARN)
-        AI_C_MUTED=$'\e[90m'     # abu-abu terang -- label/garis/teks sekunder
+        
+        # Design System Terminal Color Tokens
+        AI_C_BG=$'\e[48;2;13;17;23m'          # Background #0D1117
+        AI_C_SURFACE=$'\e[48;2;22;27;34m'     # Surface #161B22
+        AI_C_BORDER=$'\e[38;2;48;54;61m'      # Border #30363D
+        AI_C_PRIMARY=$'\e[38;2;47;129;247m'   # Primary #2F81F7
+        AI_C_ACCENT=$'\e[38;2;47;129;247m'    # Accent (using Primary)
+        AI_C_OK=$'\e[38;2;63;185;80m'         # Success #3FB950
+        AI_C_ERR=$'\e[38;2;248;81;73m'        # Error #F85149
+        AI_C_WARN=$'\e[38;2;210;153;34m'      # Warning #D29922
+        AI_C_INFO=$'\e[38;2;47;129;247m'      # Info (using Primary)
+        AI_C_TEXT=$'\e[38;2;230;237;243m'     # Text #E6EDF3
+        AI_C_MUTED=$'\e[38;2;139;148;158m'    # Muted #8B949E
     else
         AI_C_RESET=""; AI_C_BOLD=""; AI_C_DIM=""
+        AI_C_BG=""; AI_C_SURFACE=""; AI_C_BORDER=""; AI_C_TEXT=""
         AI_C_PRIMARY=""; AI_C_ACCENT=""; AI_C_OK=""; AI_C_ERR=""
         AI_C_WARN=""; AI_C_INFO=""; AI_C_MUTED=""
     fi

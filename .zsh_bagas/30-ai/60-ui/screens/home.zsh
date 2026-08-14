@@ -1,42 +1,51 @@
 # ============================================================
-# 30-ai/60-ui/screens/home.zsh — Home Workspace Screen
+#  30-ai/60-ui/screens/home.zsh — AI Workspace Home Screen
+#  AI-FIRST UX: Header → Context bar → Prompt. Tidak ada menu list.
 # ============================================================
 
 ui_home() {
     clear
-    
-    if typeset -f ui_header >/dev/null; then
+    local ZSH_BAGAS_DIR="${ZSH_BAGAS:-$HOME/.zsh_bagas}"
+    source "$ZSH_BAGAS_DIR/30-ai/60-ui/components/header.zsh" 2>/dev/null || true
+
+    # --- Header ---
+    if type ui_header >/dev/null 2>&1; then
         ui_header
     fi
+
     echo ""
-    
-    echo -e "$(ui_color primary)▶ Quick Actions:$(ui_color reset)"
-    echo -e "  $(ui_color muted)/chat$(ui_color reset)  - Chat with AI"
-    echo -e "  $(ui_color muted)/code$(ui_color reset)  - Generate code"
-    echo -e "  $(ui_color muted)/fix$(ui_color reset)   - Auto fix project"
-    echo -e "  $(ui_color muted)/scan$(ui_color reset)  - Scan project"
-    echo -e "  $(ui_color muted)/tools$(ui_color reset) - Manage tools"
-    echo ""
-    
-    echo -e "$(ui_color primary)▶ Workspace Info:$(ui_color reset)"
-    echo -e "  $(ui_color muted)Dir:$(ui_color reset) $PWD"
+
+    # --- Workspace context (jika ada recent session atau git info) ---
+    local has_context=0
     if command -v git >/dev/null 2>&1 && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-        local modified_files
-        modified_files=$(git status -s | wc -l)
-        echo -e "  $(ui_color muted)Git:$(ui_color reset) $modified_files modified files"
+        local modified
+        modified=$(git status -s 2>/dev/null | wc -l | tr -d ' ')
+        if [ "$modified" -gt 0 ]; then
+            echo "  ${AI_C_WARN}●${AI_C_RESET} ${modified} file belum di-commit"
+            has_context=1
+        fi
     fi
+    if [ -n "${AI_CURRENT_SESSION:-}" ] && [ "${AI_CURRENT_SESSION}" != "main" ]; then
+        echo "  ${AI_C_INFO}●${AI_C_RESET} Session aktif: ${AI_C_BOLD}${AI_CURRENT_SESSION}${AI_C_RESET}"
+        has_context=1
+    fi
+    [ "$has_context" -eq 1 ] && echo ""
+
+    # --- Hint minimal ---
+    echo "  ${AI_C_MUTED}Ketik prompt atau ${AI_C_RESET}/${AI_C_MUTED} untuk Command Palette${AI_C_RESET}"
     echo ""
-    
-    echo -e "$(ui_color muted)Hint: Type '/' to open Command Palette$(ui_color reset)"
-    echo ""
-    
-    # Returning the input for the dispatcher to use
+
+    # --- Single prompt ---
+    local user_input=""
     if command -v gum >/dev/null 2>&1; then
-        gum input --placeholder "Ask Bagas AI anything..."
+        user_input=$(gum input \
+            --placeholder "Ask Bagas AI anything..." \
+            --prompt "${AI_C_PRIMARY}> ${AI_C_RESET}" \
+            --width 0)
     else
-        local user_input
-        echo -n "$(ui_color primary)>$(ui_color reset) "
+        printf '%s> %s' "${AI_C_PRIMARY}" "${AI_C_RESET}"
         read -r user_input
-        echo "$user_input"
     fi
+
+    echo "$user_input"
 }

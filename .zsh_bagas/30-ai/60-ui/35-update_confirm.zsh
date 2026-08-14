@@ -91,13 +91,22 @@ _ai_update_confirm_pull() {
 
     echo "Update tersedia: $remote_count commit baru di remote."
     echo "Tidak ada perubahan repository yang akan dilakukan tanpa konfirmasi."
-    if ! read -t 60 "confirm?Jalankan git pull sekarang? (y/n) "; then
-        echo "Timeout atau input tidak tersedia. Update dibatalkan."
-        return 1
-    fi
-    if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
-        echo "Update dibatalkan. git pull tidak dijalankan."
-        return 0
+    
+    source "$repo/30-ai/60-ui/components/approval.zsh" 2>/dev/null || true
+    if command -v ui_approve >/dev/null 2>&1; then
+        if ! ui_approve "git pull (Update Bagas AI CLI)"; then
+            echo "Update dibatalkan. git pull tidak dijalankan."
+            return 0
+        fi
+    else
+        if ! read -t 60 "confirm?Jalankan git pull sekarang? (y/n) "; then
+            echo "Timeout atau input tidak tersedia. Update dibatalkan."
+            return 1
+        fi
+        if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
+            echo "Update dibatalkan. git pull tidak dijalankan."
+            return 0
+        fi
     fi
 
     if ! _ai_update_backup_local_config "$repo"; then

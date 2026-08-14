@@ -1,28 +1,38 @@
 # ============================================================
-# 30-ai/60-ui/components/timeline.zsh — Agent Timeline
+#  30-ai/60-ui/components/timeline.zsh — Agent Timeline
+#  AI-FIRST UX: gunakan _ai_ui_line dari 05-ui_box.zsh
+#  untuk konsistensi ikon dan warna dengan design system.
 # ============================================================
 
 ui_timeline() {
     local steps_str="$1"
-    local current_idx="$2"
-    
-    if [[ -z "$steps_str" ]]; then
-        return
-    fi
-    
-    # Split string by newline into array
+    local current_idx="${2:-1}"
+
+    [ -z "$steps_str" ] && return
+
     local -a steps
     steps=("${(@f)steps_str}")
-    
+
     local i=1
     for step in "${steps[@]}"; do
-        if [[ $i -lt $current_idx ]]; then
-            echo -e "  $(ui_color success)✔$(ui_color reset) $(ui_color muted)$step$(ui_color reset)"
-        elif [[ $i -eq $current_idx ]]; then
-            echo -e "  $(ui_color primary)●$(ui_color reset) $(ui_color bold)${step}$(ui_color reset)"
+        [ -z "$step" ] && (( i++ )) && continue
+        if (( i < current_idx )); then
+            # Done — ✓ dengan AI_C_OK
+            if type _ai_ui_line >/dev/null 2>&1; then
+                printf '  '; _ai_ui_line "✓" "$step"
+            else
+                printf '  %s✓%s %s\n' "${AI_C_OK:-}" "${AI_C_RESET:-}" "$step"
+            fi
+        elif (( i == current_idx )); then
+            # Active — ● bold
+            printf '  %s●%s %s%s%s\n' \
+                "${AI_C_PRIMARY:-}" "${AI_C_RESET:-}" \
+                "${AI_C_BOLD:-}" "$step" "${AI_C_RESET:-}"
         else
-            echo -e "  $(ui_color muted)○ $step$(ui_color reset)"
+            # Pending — ○ muted
+            printf '  %s○ %s%s\n' \
+                "${AI_C_MUTED:-}" "$step" "${AI_C_RESET:-}"
         fi
-        ((i++))
+        (( i++ ))
     done
 }

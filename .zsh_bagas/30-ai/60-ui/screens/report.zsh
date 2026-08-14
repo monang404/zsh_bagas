@@ -1,36 +1,35 @@
 # ============================================================
-# 30-ai/60-ui/screens/report.zsh — Final Report Screen
+#  30-ai/60-ui/screens/report.zsh — Final Report Screen
+#  AI-FIRST UX: compact hero box sesuai mockup blueprint.
 # ============================================================
 
+# ui_report(files_changed, runtime, tools_used, next_action, summary_items...)
 ui_report() {
-    local files_changed="$1"
-    local runtime="$2"
-    local tools_used="$3"
-    local next_action="$4"
-    local summary_text="$5"
-    
-    clear
-    
-    # Header
-    if typeset -f ui_header >/dev/null; then
-        ui_header
+    local files_changed="${1:-0}"
+    local runtime="${2:-?}"
+    local tools_used="${3:-}"
+    local next_action="${4:-}"
+    shift 4
+
+    local -a summary_items=("$@")
+
+    local -a lines=()
+    lines+=("Files: $files_changed")
+    lines+=("Time:  $runtime")
+    [ -n "$tools_used" ] && lines+=("Tools: $tools_used")
+    lines+=("---")
+
+    local item
+    for item in "${summary_items[@]}"; do
+        lines+=("✓ $item")
+    done
+
+    if [ -n "$next_action" ]; then
+        lines+=("---")
+        lines+=("Next")
+        lines+=("$next_action")
     fi
+
+    _ai_ui_box "Task Completed SUCCESS" "${lines[@]}"
     echo ""
-    
-    # Summary Card
-    if typeset -f ui_card_summary >/dev/null; then
-        ui_card_summary "Final Report" "$summary_text"
-    fi
-    echo ""
-    
-    # Stats Card
-    if typeset -f ui_card_stats >/dev/null; then
-        ui_card_stats "$files_changed" "$runtime" "$tools_used"
-    fi
-    echo ""
-    
-    # Next Action
-    if [[ -n "$next_action" ]]; then
-        echo -e "$(ui_color primary)▶ Next Action:$(ui_color reset) $next_action"
-    fi
 }

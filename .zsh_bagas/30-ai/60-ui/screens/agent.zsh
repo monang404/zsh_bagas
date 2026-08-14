@@ -1,55 +1,117 @@
 # ============================================================
-# 30-ai/60-ui/screens/agent.zsh — Agent Workspace
+#  30-ai/60-ui/screens/agent.zsh — Agent Dashboard
+#  AI-FIRST UX: satu hero box dengan internal divider (---).
+#  State functions dari components/state.zsh dipakai di luar box
+#  untuk live streaming updates; hero box dirender hanya di awal
+#  dan di akhir (Done/Error).
 # ============================================================
 
+# ui_agent_start(goal, total_steps) — render hero box awal agent
+ui_agent_start() {
+    local goal="${1:-Running...}"
+    local total="${2:-?}"
+
+    _ai_ui_box "AI Agent" \
+        "Goal: $goal" \
+        "---" \
+        "Steps: $total" \
+        "Status: RUNNING"
+    echo ""
+}
+
+# ui_agent_dashboard(action, steps_str, current_idx, output, next_action)
+# Render hero box penuh dengan progress + timeline. Cocok dipanggil
+# saat agent selesai atau saat perlu tampilkan state lengkap.
 ui_agent_dashboard() {
     local action="$1"
     local steps_str="$2"
-    local current_idx="$3"
+    local current_idx="${3:-1}"
     local output="$4"
     local next_action="$5"
-    
-    # Clear screen for dashboard feeling
+
     clear
-    
-    # 1. Header
-    if typeset -f ui_header >/dev/null; then
-        ui_header
+
+    local -a lines=()
+    lines+=("$action")
+    lines+=("---")
+
+    # Progress
+    local total=1
+    if [[ -n "$steps_str" ]]; then
+        total=$(printf '%s\n' "$steps_str" | grep -c '.' || echo 1)
     fi
-    echo ""
-    
-    # 2. Current Action & Progress
-    if typeset -f ui_progress >/dev/null; then
-        local total
-        if [[ -n "$steps_str" ]]; then
-            # Count non-empty lines
-            total=$(echo "$steps_str" | grep -c "^" || echo 1)
-        else
-            total=1
-        fi
-        ui_progress "$current_idx" "$total" "$action"
-    else
-        echo -e "$(ui_color primary)▶ Action:$(ui_color reset) $action"
+    lines+=("Progress $current_idx/$total")
+
+    # Progress bar (max 20 chars, aman di 80 cols)
+    local bar_len=20
+    local filled=$(( bar_len * current_idx / (total > 0 ? total : 1) ))
+    local bar="" i
+    for (( i = 0; i < filled; i++ )); do bar+="█"; done
+    for (( i = filled; i < bar_len; i++ )); do bar+="░"; done
+    lines+=("$bar")
+    lines+=("---")
+
+    # Timeline
+    if [[ -n "$steps_str" ]]; then
+        local idx=1
+        while IFS= read -r step_line; do
+            [ -z "$step_line" ] && continue
+            if (( idx < current_idx )); then
+                lines+=("✓ $step_line")
+            elif (( idx == current_idx )); then
+                lines+=("● $step_line")
+            else
+                lines+=("○ $step_line")
+            fi
+            (( idx++ ))
+        done <<< "$steps_str"
     fi
-    echo ""
-    
-    # 3. Timeline
-    if typeset -f ui_timeline >/dev/null; then
-        ui_timeline "$steps_str" "$current_idx"
-    fi
-    echo ""
-    
-    # 4. Tool Output (if any)
+
+    # Current command / tool output
     if [[ -n "$output" ]]; then
-        echo -e "$(ui_color muted)╭── Tool Output ────────────────────────────────────────────────────────$(ui_color reset)"
-        # Simple indentation for output
-        echo "$output" | sed 's/^/│ /'
-        echo -e "$(ui_color muted)╰───────────────────────────────────────────────────────────────────────$(ui_color reset)"
-        echo ""
+        lines+=("---")
+        lines+=("Current command")
+        lines+=("$output")
     fi
-    
-    # 5. Next Action
+
+    # Next action
     if [[ -n "$next_action" ]]; then
-        echo -e "$(ui_color warning)⏭ Next:$(ui_color reset) $(ui_color text)$next_action$(ui_color reset)"
+        lines+=("---")
+        lines+=("Next")
+        lines+=("$next_action")
     fi
+
+    _ai_ui_box "AI Agent RUNNING" "${lines[@]}"
+    echo ""
+}
+
+# ui_agent_done(files_changed, runtime, summary_items...)
+# Render final SUCCESS box sesuai mockup blueprint.
+ui_agent_done() {
+    local files_changed="${1:-0}"
+    local runtime="${2:-?}"
+    shift 2
+    local -a items=("$@")
+
+    local -a lines=()
+    lines+=("Files: $files_changed")
+    lines+=("Time:  $runtime")
+
+    if [ "${#items[@]}" -gt 0 ]; then
+        lines+=("---")
+        local item
+        for item in "${items[@]}"; do
+            lines+=("✓ $item")
+        done
+    fi
+
+    _ai_ui_box "SUCCESS" "${lines[@]}"
+    echo ""
+}
+
+# ui_agent_error(reason)
+ui_agent_error() {
+    local reason="${1:-Unknown error}"
+    _ai_ui_box "FAILED" "$reason"
+    echo ""
 }

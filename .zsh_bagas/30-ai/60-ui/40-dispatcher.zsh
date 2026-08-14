@@ -8,7 +8,7 @@ _AI_SUBCOMMANDS=(chat long code edit view scan fix run build project scrap ask s
 ai() {
     setopt localoptions noxtrace
     if [ $# -eq 0 ]; then
-        _ai_menu
+        _ai_workspace
         return
     fi
     local sub="$1"

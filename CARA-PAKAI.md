@@ -1,6 +1,8 @@
-# Cara Pakai zsh-bagas AI Hub
+# Cara Pakai Bagas AI CLI v2
 
-Panduan ini fokus ke **cara pakai** semua command `ai *`. Untuk struktur folder/arsitektur internal, lihat `README.md`.
+Panduan ini mencerminkan paradigma baru **AI-FIRST UX** — satu prompt utama, AI menentukan mode. Untuk struktur folder/arsitektur internal, lihat `README.md`.
+
+---
 
 ## 1. Instalasi
 
@@ -32,7 +34,7 @@ Panduan ini fokus ke **cara pakai** semua command `ai *`. Untuk struktur folder/
    Gak perlu semuanya diisi — makin banyak yang keisi, makin banyak
    fallback provider yang tersedia kalau satu provider lagi limit/down.
 
-4. Install dependency sesuai platform. **Jangan menjalankan `pkg` di Linux/macOS.**
+4. Install dependency sesuai platform.
 
    Termux:
    ```sh
@@ -49,64 +51,178 @@ Panduan ini fokus ke **cara pakai** semua command `ai *`. Untuk struktur folder/
    brew install zsh jq fzf fd bat curl tmux coreutils
    ```
 
-5. Restart shell (`zsh` baru / buka terminal baru), lalu cek semuanya
-   ke-detect dengan benar:
+5. Restart shell, lalu cek dependency:
 
    ```sh
    ai deps
    ```
 
-   Ini nampilin dependency mana yang OK/MISSING, versi `jq`/`curl`,
-   status `termux-api` (notifikasi, wake-lock, battery), permission
-   `~/.secrets.zsh`, dan skill yang ke-load.
+---
 
-## 2. Cara manggil
+## 2. Entry Point — AI Workspace
 
-Semua fitur lewat satu dispatcher `ai <subcommand> [argumen]`. Beberapa
-subcommand juga punya alias command langsung yang lebih pendek (misal
-`ai chat` = `aic`, `ai agent` = `aiagent`).
+Paradigma baru: **ketik `ai` tanpa argumen** untuk membuka **AI Workspace**.
+Tidak ada lagi menu panjang — cukup ketik apa yang ingin kamu kerjakan.
 
 ```sh
-ai                     # buka menu interaktif (gum) kalau dipanggil tanpa argumen
-ai <subcommand> ...    # jalanin subcommand langsung
+ai
 ```
 
-Kalau kamu ketik subcommand yang typo (misal `ai comit`), toolkit ini
-nawarin koreksi ("maksudnya 'ai commit'?") sebelum lanjut — gak
-langsung nembak jadi chat call ke API begitu aja.
+Output yang muncul:
 
-## 3. Chat & tanya-jawab cepat
+```
+────────────────────────────────────────────
+ Bagas AI  ·  main  ·  GPT-5.6  ·  ~/project
+────────────────────────────────────────────
+
+  Ketik prompt atau / untuk Command Palette
+
+> _
+```
+
+Ketik prompt bebas — AI otomatis menentukan mode:
+
+| Prompt kamu | Mode yang dipilih AI |
+|---|---|
+| `jelaskan JWT` | Chat |
+| `buat proposal AI` | Long / Writing |
+| `fix auth bug` | Agent / Code |
+| `edit app.py tambah validasi` | Code |
+| `scan project` | Project |
+
+---
+
+## 3. Slash Commands
+
+Dari dalam workspace, ketik `/` diikuti command untuk aksi langsung:
+
+| Slash Command | Fungsi |
+|---|---|
+| `/` atau `/?` | Buka **Command Palette** (gum filter, bisa search) |
+| `/chat <pesan>` | Chat cepat |
+| `/code <deskripsi>` | Generate kode baru |
+| `/fix` | Auto-fix file dari error |
+| `/scan` | Scan project |
+| `/agent <goal>` | Jalankan AI Agent loop |
+| `/review` | Code review diff |
+| `/commit` | Generate commit message |
+| `/session <nama>` | Mulai session baru |
+| `/details` | Tampilkan **detail log** aksi terakhir |
+| `/config verbosity 0` | Output **minimal** (hanya hasil akhir) |
+| `/config verbosity 1` | Output **normal** — default |
+| `/config verbosity 2` | Output **detail** (nama tool, file) |
+| `/config verbosity 3` | Output **debug** (semua log internal) |
+| `/stats` | Statistik token/usage |
+| `/dev` | Workspace tmux |
+| `/help` | Bantuan lengkap |
+
+Contoh:
+
+```sh
+> /fix
+> /config verbosity 0
+> /details
+> /agent fix semua bug di auth module
+```
+
+---
+
+## 4. Verbosity — Kontrol Output
+
+Output AI bisa dikontrol dengan level verbosity.
+
+**Level 0 — Minimal** (cocok untuk HP, hemat layar):
+```
+✓ Done  ·  3 files changed  ·  42s
+```
+
+**Level 1 — Normal** (default):
+```
+◌ Searching...
+→ Using rg  ·  Found 24 files
+✓ Done  ·  3 files changed  ·  42s
+```
+
+**Level 2 — Detailed** (lihat tool + file):
+```
+◌ Searching auth...
+→ Using rg  ·  Found 24 files
+  Tool: rg "auth" src/
+→ Using edit  ·  auth.ts
+✓ Done  ·  3 files changed  ·  42s
+```
+
+**Level 3 — Debug** (semua log internal).
+
+Set via slash command dari workspace:
+```
+> /config verbosity 0
+```
+
+Atau set permanen di `90-local/local.zsh`:
+```sh
+export AI_VERBOSITY=1
+```
+
+---
+
+## 5. Progressive Disclosure — `/details`
+
+Output default sengaja **minimal**. Kalau ingin lihat detail log aksi terakhir (tool apa yang dipakai, file apa yang dibuka), ketik:
+
+```
+> /details
+```
+
+Output:
+```
+─────────────────────────────────
+ Detail Log
+─────────────────────────────────
+◌ Searching auth...
+→ Using rg | Found 24 matches
+→ Using edit | auth.ts
+⚠ Needs approval: rm build/
+✓ Done
+─────────────────────────────────
+```
+
+---
+
+## 6. Chat & Tanya-Jawab
 
 | Command | Alias | Kegunaan |
 |---|---|---|
-| `ai chat "<pesan>"` | `aic` | Chat cepat, model kelas *fast*, jawaban streaming (muncul token demi token). |
-| `ai long "<pesan>"` | `aicl` | Chat model kelas *smart* (lebih pintar, lebih lambat), non-streaming. |
+| `ai chat "<pesan>"` | `aic` | Chat cepat, model kelas *fast*, jawaban streaming. |
+| `ai long "<pesan>"` | `aicl` | Chat model kelas *smart* (lebih pintar, lebih lambat). |
 | `ai shell "<pesan>"` | `aish` | Minta perintah shell/Termux yang aman & langsung bisa dijalankan. |
-| `ai ask "<pertanyaan>"` | `aiask` | Tanya-jawab tunggal, **pakai cache** — pertanyaan identik yang diulang gak manggil API lagi. Tambah `--no-cache` buat paksa jawaban baru. |
-| `ai clip` | `aiclip` | Kirim isi clipboard ke AI (konten sensitif difilter dulu). |
-| `ai session start/end/list/resume/prune` | | Sesi chat multi-turn yang tersimpan, bisa dilanjut lain waktu. |
+| `ai ask "<pertanyaan>"` | `aiask` | Tanya-jawab tunggal, **pakai cache** — pertanyaan identik tidak manggil API lagi. |
+| `ai clip` | `aiclip` | Kirim isi clipboard ke AI. |
+| `ai session start/end/list/resume/prune` | | Sesi chat multi-turn yang tersimpan. |
 
 Contoh:
 
 ```sh
 ai chat "jelasin apa itu circuit breaker pattern"
 ai ask "berapa hari dalam setahun kabisat?"
-ai ask "berapa hari dalam setahun kabisat?"   # <- ini instan, dari cache
+ai ask "berapa hari dalam setahun kabisat?"   # <- instan dari cache
 ai shell "cari semua file .log lebih dari 7 hari lalu hapus"
 ```
 
-## 4. Kerja dengan kode
+---
+
+## 7. Kerja dengan Kode
 
 | Command | Kegunaan |
 |---|---|
-| `ai code "<deskripsi>"` | Generate file kode baru (bikin diff+backup kalau file target udah ada). |
-| `ai edit <file> "<instruksi>"` | Edit file existing sesuai instruksi (`--force` buat skip guard panjang file). |
-| `ai view <file> [start] [end]` | Lihat isi file (opsional per-baris). |
-| `ai fix <file> "<pesan error>"` | Perbaiki file berdasarkan pesan error, hasil ditulis ke `<file>.fixed`. |
-| `ai run <file.py>` | Jalanin file Python, auto-fix kalau error (sampai 2x percobaan). |
-| `ai project <nama_folder> "<deskripsi>"` | Generate project multi-file baru dari nol. Generated code hanya diverifikasi syntax; **tidak dieksekusi otomatis**. |
-| `ai build [-o nama_folder] "<deskripsi>"` | Mirip `ai project`, alur workflow yang lebih terpandu. |
-| `ai scrap <url/topik>` | Scraping/riset cepat lalu rangkum jadi draft kode/teks. |
+| `ai code "<deskripsi>"` | Generate file kode baru. |
+| `ai edit <file> "<instruksi>"` | Edit file existing sesuai instruksi. |
+| `ai view <file> [start] [end]` | Lihat isi file per-baris. |
+| `ai fix <file> "<pesan error>"` | Perbaiki file dari pesan error. |
+| `ai run <file.py>` | Jalankan Python, auto-fix kalau error (sampai 2x). |
+| `ai project <nama> "<deskripsi>"` | Generate project multi-file dari nol. |
+| `ai build "<deskripsi>"` | Mirip `ai project`, alur lebih terpandu. |
+| `ai scrap <url/topik>` | Scraping/riset cepat lalu rangkum. |
 | `ai commit` | Generate pesan commit dari `git diff` staged. |
 | `ai review` | Review diff/perubahan terakhir. |
 
@@ -119,17 +235,21 @@ ai fix app.py "TypeError: unsupported operand type(s)"
 ai run app.py
 ```
 
-## 5. Manajemen file bantu
+---
+
+## 8. Manajemen File
 
 | Command | Kegunaan |
 |---|---|
 | `ai undo <file>` | Restore dari backup `.bak.*` terbaru. |
-| `ai bakclean [hari]` | Bersihin backup `.bak.*` (dan cache `ai ask`) yang lebih tua dari N hari (default 14). |
-| `ai share <file>` | Share file lewat share-sheet Android (`termux-share`). |
-| `ai scan` | Scan ulang ringkasan project (manifest `package.json`/`requirements.txt`/dst). Auto re-scan kalau manifest berubah. |
-| `ai index [...]` | Bikin/lihat index codebase (dipakai internal oleh `grep_search`/`glob_search` di `ai agent`). |
+| `ai bakclean [hari]` | Bersihin backup lebih tua dari N hari (default 14). |
+| `ai share <file>` | Share file lewat share-sheet Android. |
+| `ai scan` | Scan ulang ringkasan project. |
+| `ai index [...]` | Bikin/lihat index codebase. |
 
-## 6. Perencanaan & dokumentasi
+---
+
+## 9. Perencanaan & Dokumentasi
 
 | Command | Kegunaan |
 |---|---|
@@ -138,115 +258,156 @@ ai run app.py
 | `ai spec "<deskripsi aplikasi>"` | Generate spesifikasi teknis aplikasi. |
 | `ai summarize <file\|url>` | Ringkas isi file atau halaman web. |
 
-## 7. Agent otomatis (`ai agent`)
+---
 
-Ini fitur paling "berat" — agent yang bisa baca/tulis file, jalankan
-command, dan looping sendiri sampai tugas selesai (atau mentok).
+## 10. AI Agent Otomatis
+
+Fitur paling powerful — agent yang bisa baca/tulis file, jalankan command, dan looping sendiri sampai tugas selesai.
 
 ```sh
-ai agent "<goal>"                       # jalan normal, minta konfirmasi tiap command berisiko
-ai agent --yolo "<goal>"                # command jalan otomatis tanpa konfirmasi manual (command destruktif TETAP diblokir apa pun mode-nya)
-ai agent --no-review "<goal>"           # skip auto-review di akhir (hemat token/waktu)
-ai agent --resume <nama_checkpoint>     # lanjutin sesi yang kepotong/berhenti di tengah
-ai agent --list-checkpoints             # lihat daftar checkpoint yang bisa di-resume
+ai agent "<goal>"                       # konfirmasi tiap command berisiko
+ai agent --yolo "<goal>"               # auto-run (command destruktif tetap diblokir)
+ai agent --no-review "<goal>"          # skip auto-review di akhir
+ai agent --resume <nama_checkpoint>    # lanjut sesi yang terpotong
+ai agent --list-checkpoints            # lihat daftar checkpoint
+```
+
+UI Agent saat berjalan (satu hero box):
+
+```
+┌──────────────────────────────────┐
+│ AI Agent RUNNING                 │
+├──────────────────────────────────┤
+│ Goal: fix auth bug               │
+│ Progress 3/7                     │
+│ ███████░░░░░░░░░░░░░             │
+├──────────────────────────────────┤
+│ ✓ Scan project                   │
+│ ✓ Found auth module              │
+│ ● Editing auth.ts                │
+│ ○ Run tests                      │
+│ ○ Generate report                │
+├──────────────────────────────────┤
+│ Current command                  │
+│ rg "auth" src/                   │
+└──────────────────────────────────┘
+```
+
+Setelah selesai (SUCCESS box):
+
+```
+┌──────────────────────────────────┐
+│ SUCCESS                          │
+├──────────────────────────────────┤
+│ Files: 3                         │
+│ Time:  42s                       │
+├──────────────────────────────────┤
+│ ✓ JWT fixed                      │
+│ ✓ Tests passed                   │
+└──────────────────────────────────┘
 ```
 
 Yang perlu diketahui:
 
-- **Checkpoint otomatis** — kalau proses Termux/Android mati di tengah
-  jalan, progress gak hilang. Tinggal `ai agent --resume <slug>`.
-- **Guard command berbahaya** — pola command yang destruktif (`rm -rf`,
-  dsb) selalu diblokir, terlepas dari `--yolo`.
-- **Auto-review** — setelah task selesai & ada file yang berubah,
-  agent otomatis review sekali (matiin dengan `--no-review`).
-- **Notifikasi Android** — kalau `termux-notification` ada, sekali
-  aplikasi ini jalan di background kamu tetap dapet update progress
-  per-step (notifikasi yang sama ter-update, bukan numpuk) plus
-  notifikasi "selesai" di akhir.
-- **Subagent researcher** — untuk goal besar/kompleks, agent bisa
-  nawarin riset dulu (readonly) sebelum mulai kerja beneran; defaultnya
-  "tidak" kalau kamu enter kosong.
-- **Log per-sesi** — lihat lewat `ai log` (`aih`), detail lengkap tiap
-  step ada di `generate/sessions/agent_checkpoints/` dan tool-run log.
+- **Checkpoint otomatis** — kalau proses Termux/Android mati, progress tidak hilang.
+- **Guard command berbahaya** — pola destruktif (`rm -rf`, dsb) selalu diblokir terlepas dari `--yolo`.
+- **Auto-review** — setelah task selesai & ada file yang berubah, agent auto-review sekali.
+- **Notifikasi Android** — kalau `termux-notification` ada, dapat update progress per-step.
+- **Approval UX** — command yang butuh konfirmasi muncul sebagai card:
 
-Mode agent lain yang lebih spesifik/terbatas:
+  ```
+  ⚠  Needs approval
+    rm -rf build/
+
+  [Approve]  [Deny]
+  ```
+
+Mode agent terbatas:
 
 | Command | Tujuan | Bisa ubah file? |
 |---|---|---|
 | `ai review` | Review diff, read-only | Tidak |
-| `ai debug "<masalah>"` | Diagnosis pakai run_test/run_command, tidak boleh ubah file | Tidak |
+| `ai debug "<masalah>"` | Diagnosis, tidak ubah file | Tidak |
 | `ai research "<goal>"` | Riset/inspeksi codebase, readonly | Tidak |
-| `ai agent "<goal>"` | Agent full akses (baca+tulis+jalankan) | Ya |
-| `ai code "<deskripsi>"` | Generate kode langsung | Ya |
+| `ai agent "<goal>"` | Agent full akses | Ya |
 
-## 8. Update toolkit ini sendiri
+---
+
+## 11. Update Toolkit
 
 ```sh
 ai update
 ```
 
-- Kalau `~/.zsh_bagas` adalah Git working tree: cek status dulu (branch,
-  ada perubahan lokal yang belum commit atau nggak), **selalu** minta
-  konfirmasi `y/n` sebelum benar-benar `git pull`, dan backup config
-  lokal (mis. `90-local/local.zsh`) dulu kalau berpotensi conflict.
-  Tidak ada auto-pull diam-diam, tidak ada `git reset`/`git clean`
-  paksa kalau pull gagal.
-- Kalau bukan Git repo: dikasih instruksi update manual, **tidak** ada
-  percobaan download otomatis dari mana pun.
+Selalu minta konfirmasi `[Approve] / [Deny]` sebelum `git pull`. Tidak ada auto-pull diam-diam.
 
-## 9. Info & maintenance
+---
+
+## 12. Info & Maintenance
 
 | Command | Kegunaan |
 |---|---|
-| `ai stats` | Statistik pemakaian (token per hari, dst). |
-| `ai log` | Lihat history chat/perintah (`aih`). |
-| `ai deps` | Cek semua dependency & konfigurasi (jalankan ini pertama kali / kalau ada yang aneh). |
-| `ai dev` | Tools tambahan buat development toolkit ini sendiri. |
-| `ai testmodels` | Test konektivitas ke semua provider/model yang dikonfigurasi. |
-| `ai menu` | Buka menu interaktif `gum` (sama seperti manggil `ai` tanpa argumen). |
+| `ai stats` | Statistik pemakaian token. |
+| `ai log` | History chat/perintah (`aih`). |
+| `ai deps` | Cek semua dependency & konfigurasi. |
+| `ai dev` | Tools development toolkit ini sendiri. |
+| `ai testmodels` | Test konektivitas ke semua provider. |
 | `ai h` | Bantuan ringkas semua subcommand. |
 
-## 10. Mode hemat data & baterai
+> **`ai menu`** sekarang adalah alias untuk membuka **AI Workspace** (sama seperti `ai` tanpa argumen).
 
-Tanpa perlu diapa-apain, toolkit ini otomatis:
+---
 
-- **Cek baterai** sebelum operasi berat (`ai agent`/`ai project`) —
-  minta konfirmasi kalau baterai rendah & tidak sedang charging.
-- **Cek jaringan** — kasih 1 baris info kalau kemungkinan lagi pakai
-  data seluler (bukan WiFi), bukan blocking. Matiin lewat
-  `AI_DATA_SAVER_WARN=0` di `90-local/local.zsh`.
-- **Cek budget token harian** — warning kalau pemakaian token hari itu
-  udah lewat ambang (`AI_DAILY_TOKEN_WARN`), minta konfirmasi lanjut.
-- Semuanya **fail-open**: kalau `termux-api` gak ke-install sama
-  sekali, semua cek ini otomatis skip tanpa error/nge-block apa pun —
-  jadi toolkit ini tetap jalan normal di Linux desktop biasa (bukan
-  cuma Termux).
+## 13. Mode Hemat Data & Baterai
 
-## 11. Override konfigurasi personal
+Secara otomatis toolkit ini:
 
-Taruh override di `90-local/local.zsh` (copy dari
-`90-local/local.zsh.example`) — file ini **tidak** ikut ter-commit ke
-Git (sudah di-`.gitignore`). Contoh yang biasa diubah: urutan provider
-default, ambang baterai/token, atau mematikan warning tertentu.
+- **Cek baterai** sebelum operasi berat — minta konfirmasi kalau baterai rendah.
+- **Cek jaringan** — info kalau kemungkinan pakai data seluler.
+- **Cek budget token harian** — warning kalau lewat ambang `AI_DAILY_TOKEN_WARN`.
+- **Fail-open** — kalau `termux-api` tidak terinstall, semua cek ini skip tanpa error.
 
-## 12. Semua subcommand (referensi cepat)
+---
+
+## 14. Override Konfigurasi Personal
+
+Taruh override di `90-local/local.zsh` — file ini tidak ikut ter-commit ke Git. Contoh:
+
+```sh
+# Verbosity default
+export AI_VERBOSITY=1
+
+# Provider priority
+export AI_PROVIDER_ORDER="groq gemini cerebras"
+
+# Matikan warning data seluler
+export AI_DATA_SAVER_WARN=0
+
+# Ambang token harian
+export AI_DAILY_TOKEN_WARN=50000
+```
+
+---
+
+## 15. Semua Subcommand (Referensi Cepat)
 
 ```
-chat long code edit view scan fix run build project scrap ask shell
-commit review debug research plan prompt spec summarize clip session
-agent stats log menu deps dev testmodels undo bakclean share index
-update h
+chat  long  code  edit  view  scan  fix  run  build  project  scrap
+ask   shell commit review debug research plan prompt spec summarize
+clip  session  agent  stats  log  menu  deps  dev  testmodels
+undo  bakclean  share  index  update  h
 ```
 
-Ketik `ai h` kapan saja buat lihat daftar ini plus penjelasan singkat
-langsung dari terminal.
+Ketik `ai h` kapan saja buat lihat daftar ini plus penjelasan singkat.
 
-## 7. Security behavior penting
+---
+
+## 16. Security Behavior
 
 - Tool filesystem agent dibatasi ke project root secara canonical path. Relative path, `..`, prefix collision, dan symlink escape ditolak.
 - `move_file` memvalidasi source **dan** destination.
-- `web_fetch` hanya menerima HTTP/HTTPS, menolak URL userinfo, private/loopback/link-local/reserved IP, mengikat koneksi ke alamat hasil DNS validation, dan tidak mengikuti redirect otomatis.
-- `--yolo` tidak lagi menjadi izin universal untuk shell arbitrary. Command yang tidak masuk safe-shell allowlist tetap meminta konfirmasi.
-- Generated code dari `ai project` tidak dieksekusi otomatis. Project hanya menjalani syntax check Python.
-- File `.aiagent/permissions.zsh` di dalam project tidak dieksekusi otomatis. Jika memang ingin memakai konfigurasi project-local, set `AI_ALLOW_PROJECT_CONFIG=1` secara eksplisit sebelum menjalankan agent.
+- `web_fetch` hanya menerima HTTP/HTTPS, menolak URL userinfo, private/loopback/reserved IP.
+- `--yolo` tidak menjadi izin universal untuk shell arbitrary. Command di luar safe-shell allowlist tetap meminta konfirmasi.
+- Generated code dari `ai project` tidak dieksekusi otomatis.
+- File `.aiagent/permissions.zsh` tidak dieksekusi otomatis — perlu `AI_ALLOW_PROJECT_CONFIG=1`.
 - `AI_AGENT_YOLO_MODE` tidak diekspor ke child process dan dipulihkan setelah sesi agent selesai.

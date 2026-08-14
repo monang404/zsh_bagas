@@ -70,7 +70,22 @@ _ai_ui_box() {
     local avail=$(( inner - 2 ))
     [ "$avail" -lt 4 ] && avail=4
     local line subline wrapped pad padstr
+    local div_l div_r div_hz
+    if _ai_ui_supports_unicode; then
+        div_l="├"; div_r="┤"; div_hz="─"
+    else
+        div_l="+"; div_r="+"; div_hz="-"
+    fi
+
     for line in "${lines[@]}"; do
+        if [ "$line" = "---" ]; then
+            # Gambar divider separator
+            local div_fill="" i
+            for (( i = 0; i < inner; i++ )); do div_fill+="$div_hz"; done
+            echo "${accent}${div_l}${div_fill}${div_r}${AI_C_RESET}"
+            continue
+        fi
+        
         for subline in "${(f)line}"; do
             while IFS= read -r wrapped; do
                 pad=$(( avail - ${#wrapped} ))
