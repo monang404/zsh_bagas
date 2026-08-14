@@ -25,6 +25,14 @@ _ai_agent_exec_track_and_continue() {
             block_reason="Tool '$tool' gagal $same_fail_count kali berturut-turut (step $step)"
             _ai_agent_state_transition "$state_dir" BLOCKED 2>/dev/null || true
             return 1
+        else
+            # Phase 5 (audit.md §10/§20): visible retry indicator for a
+            # non-terminal repeated failure of the identical (tool, args)
+            # pair. $same_fail_count/$AI_AGENT_MAX_SAME_FAIL are already
+            # correctly maintained above -- this is a new print statement
+            # only, no new state. Does not fire on the give-up branch
+            # above (that keeps its own distinct final message).
+            _ai_agent_render_retry "$same_fail_count" "$AI_AGENT_MAX_SAME_FAIL"
         fi
     else
         same_fail_count=0

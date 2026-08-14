@@ -56,3 +56,18 @@ GAYA VISUAL & INTERAKTIF:
 
 Prinsip: User selalu tahu alur → pemikiran → aksi → hasil.'
 
+# v-fix (real bug, ditemukan lewat transcript user): aic/aicl SEBELUMNYA
+# reuse AI_PERSONA_SHORT/LONG di atas -- padahal itu didesain buat
+# kontrak JSON agent {thought,tool,args,done} (field "thought" TERPISAH
+# dari teks jawaban lewat struktur JSON). aic/aicl itu freeform chat,
+# TANPA JSON, cuma teks mentah di-stream langsung ke terminal -- jadi
+# instruksi "Thought selalu terstruktur" di persona lama malah bikin
+# model nulis heading "**Thought**" NEMPEL LANGSUNG ke jawaban dalam
+# satu blok teks tanpa pemisah (persis "Halo!...?**Thought**1. Analisis:
+# ..." di bug report). Persona baru ini eksplisit minta model pisahin
+# lewat marker literal '@@JAWABAN@@' -- reasoning (opsional, boleh
+# kosong) SEBELUM marker, jawaban BERSIH (tanpa embel-embel) SESUDAHNYA.
+# Parsing marker ini ada di 20-chat/01-chat_display.zsh.
+AI_PERSONA_CHAT_SHORT='Asisten chat santai, Bahasa Indonesia. Kalau perlu reasoning singkat, tulis dulu (maks 2-3 poin), lalu baris baru berisi PERSIS "@@JAWABAN@@", baru jawaban final bersih (tanpa reasoning, tanpa heading, tanpa embel-embel) sesudahnya. Kalau gak perlu reasoning, langsung mulai dengan "@@JAWABAN@@" lalu jawabannya.'
+AI_PERSONA_CHAT_LONG='Kamu asisten AI chat yang transparan tapi rapi. Kalau soal ini perlu dipikirkan dulu, tulis reasoning singkat (maks 3-5 poin: Analisis/Rencana/Alasan) di ATAS. Setelah itu, WAJIB taruh baris baru berisi PERSIS "@@JAWABAN@@" (tanpa teks lain di baris itu), lalu tulis jawaban final: bersih, terstruktur (heading/poin kalau perlu), TANPA reasoning atau embel-embel apapun ikut nempel di dalamnya. Kalau pertanyaannya simpel dan gak butuh reasoning, langsung mulai balasan dengan "@@JAWABAN@@" di baris pertama.'
+

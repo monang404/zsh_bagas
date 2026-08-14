@@ -67,7 +67,31 @@ _ai_agent_reasoning_display() {
         it="${it%% }"
         [ -n "$it" ] && clean+=("$it")
     done
-    items=("${clean[@]}")
+
+    # v-fix (real bug, found while investigating the "2...." truncation
+    # report): when the model writes a numbered list with the marker and
+    # its content on separate lines ("1.\n  Analisis: ...\n2.\n  ..."),
+    # each becomes its own array item after the split above. If a bare
+    # marker like "2." lands as the LAST item kept by the 3-item
+    # truncation below, line 87's "..." gets appended straight to it,
+    # producing the garbled "2...." fragment from the bug report -- not
+    # data corruption, just truncation landing on an empty header. Fix:
+    # merge a bare "N." marker with the line right after it into one
+    # logical item BEFORE truncation, so truncation always keeps
+    # (marker + content) together or drops the pair entirely.
+    local -a merged
+    local -i ci=1 cn=${#clean[@]}
+    while (( ci <= cn )); do
+        local cur="${clean[$ci]}"
+        if [[ "$cur" =~ ^[0-9]+\.$ ]] && (( ci < cn )); then
+            merged+=("$cur ${clean[$((ci + 1))]}")
+            (( ci += 2 ))
+        else
+            merged+=("$cur")
+            (( ci += 1 ))
+        fi
+    done
+    items=("${merged[@]}")
     [ "${#items[@]}" -eq 0 ] && return 1
 
     local truncated=0
@@ -76,11 +100,23 @@ _ai_agent_reasoning_display() {
         truncated=1
     fi
 
+    # v-fix (UI polish): potongan 76-char dulu asal cut di tengah kata
+    # ("...kebutuha…" dari kata "kebutuhan") -- kesannya berantakan.
+    # Sekarang cari spasi terakhir SEBELUM batas 76 char, potong di
+    # situ; kalau gak ada spasi sama sekali dalam 76 char pertama
+    # (satu kata super panjang, jarang tapi mungkin), baru fallback ke
+    # hard-cut seperti sebelumnya biar box tetap gak jebol lebarnya.
     local i n=${#items[@]}
     for (( i = 1; i <= n; i++ )); do
         local line="${items[$i]}"
         if [ "${#line}" -gt 76 ]; then
-            line="${line[1,76]}…"
+            local head="${line[1,76]}"
+            local cut="${head%% *}"
+            if [ "${#head}" -gt "${#cut}" ]; then
+                line="${head% *}…"
+            else
+                line="${head}…"
+            fi
         fi
         items[$i]="$line"
     done

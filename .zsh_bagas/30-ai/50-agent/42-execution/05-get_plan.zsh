@@ -79,7 +79,11 @@ _ai_agent_exec_get_plan() {
     rm -rf "$pdir"
 
     if [ "$AI_VERBOSE" = "1" ] && [ -n "$compat_msg" ]; then
-        echo "  [AGENT][COMPAT] $compat_msg"
+        # Phase 8 (audit.md §22, low priority): dropped the raw
+        # [AGENT][COMPAT] tag for visual consistency with the rest of
+        # the new renderer -- same trigger condition (AI_VERBOSE=1,
+        # non-empty compat_msg), unchanged.
+        echo "  (compat) $compat_msg"
     fi
 
     if [ -z "$thought" ] && [ -z "$tool" ] && [ "$done_flag" != "true" ]; then

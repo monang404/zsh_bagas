@@ -12,7 +12,7 @@ _ai_agent_finalize() {
 
     local state_dir="$1" checkpoint_file="$2" goal="$3" msgfile="$4"
     local no_review="$5" yolo="$6" run_slug="$7"
-    local step done_flag block_reason thought lifecycle_state
+    local step done_flag block_reason thought lifecycle_state commands_run
     step=$(<"$state_dir/step")
     done_flag=$(<"$state_dir/done")
     lifecycle_state=$(_ai_agent_state_get "$state_dir" 2>/dev/null)
@@ -21,6 +21,12 @@ _ai_agent_finalize() {
     [ -z "$lifecycle_state" ] && lifecycle_state="$([ "$done_flag" = "true" ] && echo COMPLETE || echo BLOCKED)"
     block_reason=$(<"$state_dir/block_reason")
     thought=$(<"$state_dir/thought")
+    # Phase 7 (audit.md §13): commands_run already exists in state_dir
+    # (written by the loop) but was never read here before -- REUSE, no
+    # new data path, just a one-line addition for the footer metric.
+    commands_run=0
+    [ -f "$state_dir/commands_run" ] && commands_run=$(<"$state_dir/commands_run")
+    [[ "$commands_run" =~ ^[0-9]+$ ]] || commands_run=0
     local -A touched_files changed_files
     local f
     while IFS= read -r f; do [[ -n "$f" ]] && touched_files[$f]=1; done < "$state_dir/touched_files"
@@ -87,30 +93,41 @@ _ai_agent_finalize() {
             final_lines+=("Verifikasi tambahan (npm test/lint):${npm_out}")
         fi
 
-        # Task 4.2 (fase4_reviewer_integration): review otomatis SEKALI di
-        # titik ini -- tepat sesudah agent declare selesai DAN sudah lolos
-        # verifikasi syntax (_ai_verify_touched_files, dicek jauh sebelum
-        # break loop di atas, TIDAK diulang di sini) DAN beneran ada file
-        # yang berubah. `changed_files` REUSE state yang udah ada (Task
-        # 1.6, diisi tiap tool tulis sukses) -- BUKAN state baru. Task
-        # readonly-only (gak pernah nulis file) -> changed_files kosong ->
-        # blok ini di-skip total, review SAMA SEKALI gak kepanggil (gak ada
-        # API call tambahan).
-        # Task 4.3: flag --no-review ($no_review=1) skip blok ini SAMA
-        # PERSIS kayak readonly-task (gak ada API call tambahan, gak ada
-        # baris "Review:" di ringkasan akhir) -- default TETAP jalan
-        # (no_review=0) kecuali flag-nya eksplisit dipasang.
-        if [ "$no_review" -eq 0 ] && [ "${#changed_files[@]}" -gt 0 ]; then
-            local review_line=""
-            if command -v git >/dev/null 2>&1 && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-                # `git diff` (unstaged) -- pola yang SAMA persis dipakai tool
-                # readonly `git_diff` (05-tools.zsh) buat lihat perubahan
-                # kerja aiagent, yang emang nulis langsung ke file tanpa
-                # nge-stage. TIDAK bikin mekanisme diff baru.
-                local review_diff review_diffstat
-                review_diff=$(git diff 2>/dev/null)
-                if [ -n "$review_diff" ]; then
-                    review_diffstat=$(git diff --stat 2>/dev/null)
+        # Task 4.2 (fase4_reviewer_integration) + Phase 7 (audit.md §12):
+        # a single `git diff` computation feeds BOTH the raw "Changes"
+        # section (always shown when a diff exists, independent of
+        # --no-review) and the AI auto-review (still gated by
+        # --no-review, unchanged gating/content per audit §26). Only one
+        # `git diff` invocation total, per §12's explicit "do not call
+        # git diff twice" instruction.
+        if [ "${#changed_files[@]}" -gt 0 ] && command -v git >/dev/null 2>&1 && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+            local review_diff review_diffstat
+            review_diff=$(git diff 2>/dev/null)
+            if [ -n "$review_diff" ]; then
+                review_diffstat=$(git diff --stat 2>/dev/null)
+
+                # Phase 7: "Changes" section -- raw diff (guarded by the
+                # existing _ai_guard_diff truncation helper, REUSE, same
+                # AI_DIFF_MAX_CHARS as aicommit/aireview). Shown under a
+                # heading inside the same COMPLETE box (§12: "render it
+                # under a Changes heading, separately from ... the
+                # review_line text" -- not a second nested box). Each
+                # diff line becomes its own box-line element so
+                # _ai_ui_box wraps only genuinely long individual lines,
+                # rather than word-reflowing the whole diff blob.
+                local diff_guarded dl
+                diff_guarded=$(_ai_guard_diff "$review_diff" "$review_diffstat")
+                final_lines+=("" "Changes:")
+                while IFS= read -r dl; do
+                    final_lines+=("$dl")
+                done <<< "$diff_guarded"
+
+                # Task 4.3: flag --no-review ($no_review=1) skips ONLY the
+                # AI-generated review text below (no API call, no "Review:"
+                # line) -- the raw Changes section above is unaffected,
+                # since it's not an AI call, just the diff already computed.
+                if [ "$no_review" -eq 0 ]; then
+                    local review_line=""
                     # _ai_review_diff_core (Task 4.1, dipanggil apa adanya)
                     # -- INFORMATIONAL, agent TIDAK nunggu jawaban buat ini
                     # dan TIDAK pernah auto-lanjut edit lagi walau review
@@ -128,15 +145,25 @@ _ai_agent_finalize() {
                         review_line="review gagal dijalankan (provider AI gak bisa dihubungi)."
                     fi
                     _ai_log "review" "auto review after aiagent" "$review_line"
+                    [ -n "$review_line" ] && final_lines+=("" "Review:" "$review_line")
                 fi
             fi
-            [ -n "$review_line" ] && final_lines+=("" "Review:" "$review_line")
         fi
-        _ai_log_agent_done "Task completed"
-        local l
-        for l in "${final_lines[@]}"; do
-            echo "[AGENT][SUMMARY] $l" >&2
-        done
+
+        # Phase 7 footer (audit.md §23 Complete spec): combined
+        # commands_run + changed_files count. The brief's reference
+        # layout also shows separate "actions" vs "command" counts and
+        # a "retries" count; this repo's data model only cleanly
+        # supports a single combined commands_run total (no
+        # run_command-vs-other-tool split, no persisted retry_total) --
+        # per §23/§29's explicit note not to treat the reference layout
+        # as literal, this uses the single combined count instead of
+        # fabricating a second metric.
+        local _footer_sep="·"
+        _ai_ui_supports_unicode || _footer_sep="-"
+        final_lines+=("" "${commands_run} actions ${_footer_sep} ${#changed_files[@]} files changed")
+
+        _ai_ui_box "${final_icon_ok} Completed" "${final_lines[@]}"
     else
         [ -z "$block_reason" ] && block_reason="Agent berhenti (step $step), alasan spesifik gak tercatat."
         local -a final_lines
@@ -155,11 +182,7 @@ _ai_agent_finalize() {
         if [ "$_show_hint" -eq 1 ] && hint=$(_ai_agent_reasoning_display "$thought"); then
             final_lines+=("Saran: ${hint//$'\n'/ }")
         fi
-        _ai_log_agent_error "Task blocked"
-        local l
-        for l in "${final_lines[@]}"; do
-            echo "[AGENT][SUMMARY] $l" >&2
-        done
+        _ai_ui_box "${final_icon_bad} Task blocked" "${final_lines[@]}"
     fi
 
     return 0

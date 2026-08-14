@@ -4,10 +4,29 @@
 # ============================================================
 
 _ai_permission_check() {
+    # Same defensive guard used across the rest of 30-ai (e.g.
+    # 25-perm_write.zsh's callers, 42-execution/*.zsh): don't leak this
+    # function's internal assignments to the terminal if the caller
+    # happens to have global xtrace on. This is the one file in the
+    # permission chain that was missing it, despite running on every
+    # single tool call.
+    setopt localoptions noxtrace
+
     local tool_name="$1"
     local args_json="$2"
     local level="${AI_TOOL_REGISTRY[$tool_name]#*|}"
-    local path dest
+    # v-fix (same bug as 25-perm_write.zsh, not yet applied here): `local
+    # path` (and `dest` doesn't collide, but keeping the pair together)
+    # shadows zsh's tied special parameter path/PATH. Merely declaring it
+    # empties $PATH for the rest of THIS function's dynamic scope, which
+    # silently breaks every jq call below (this function runs first, on
+    # every single tool call, before perm_write/perm_shell even get a
+    # chance to run) -- extracted path/dest end up empty, the caller's
+    # approval box shows garbage, and any command that shells out for real
+    # (e.g. `command -v`) misbehaves too since PATH is gone. Renamed to
+    # fs_path/fs_dest; contract with _ai_validate_project_path etc is
+    # otherwise untouched.
+    local fs_path fs_dest
 
     # ── Filesystem path containment ──────────────────────────────
     # Every filesystem capability gets canonical path containment BEFORE
@@ -16,40 +35,40 @@ _ai_permission_check() {
     case "$tool_name" in
         read_file|write_file|edit_file|patch_file|count_lines|delete_file)
             # PATH IS MANDATORY for these tools
-            path=$(_ai_tool_extract_path "$args_json")
-            if [ -z "$path" ]; then
+            fs_path=$(_ai_tool_extract_path "$args_json")
+            if [ -z "$fs_path" ]; then
                 echo "ERROR: tool '$tool_name' membutuhkan args.path (string non-empty). Diterima: $(printf '%s' "$args_json" | _ai_head_c 200)" >&2
                 return 1
             fi
-            _ai_validate_project_path "$path" "$tool_name" || return 1
+            _ai_validate_project_path "$fs_path" "$tool_name" || return 1
             ;;
         list_dir|glob_search|grep_search)
             # PATH IS OPTIONAL for these tools — empty = "." (current dir)
-            path=$(_ai_tool_extract_path "$args_json")
-            if [ -n "$path" ]; then
-                _ai_validate_project_path "$path" "$tool_name" || return 1
+            fs_path=$(_ai_tool_extract_path "$args_json")
+            if [ -n "$fs_path" ]; then
+                _ai_validate_project_path "$fs_path" "$tool_name" || return 1
             fi
             # Empty path is perfectly valid → default to "."
             ;;
         move_file)
-            path=$(_ai_tool_extract_path "$args_json")
-            dest=$(_ai_tool_extract_field "$args_json" dest destination)
-            if [ -z "$path" ]; then
+            fs_path=$(_ai_tool_extract_path "$args_json")
+            fs_dest=$(_ai_tool_extract_field "$args_json" dest destination)
+            if [ -z "$fs_path" ]; then
                 echo "ERROR: tool 'move_file' membutuhkan args.path (sumber, string non-empty). Diterima: $(printf '%s' "$args_json" | _ai_head_c 200)" >&2
                 return 1
             fi
-            if [ -z "$dest" ]; then
+            if [ -z "$fs_dest" ]; then
                 echo "ERROR: tool 'move_file' membutuhkan args.dest (tujuan, string non-empty). Diterima: $(printf '%s' "$args_json" | _ai_head_c 200)" >&2
                 return 1
             fi
-            _ai_validate_project_path "$path" "move_file source" || return 1
-            _ai_validate_project_path "$dest" "move_file destination" || return 1
+            _ai_validate_project_path "$fs_path" "move_file source" || return 1
+            _ai_validate_project_path "$fs_dest" "move_file destination" || return 1
             ;;
         run_test)
             # PATH IS OPTIONAL for run_test — empty = "."
-            path=$(_ai_tool_extract_path "$args_json")
-            if [ -n "$path" ]; then
-                _ai_validate_project_path "$path" "run_test" || true
+            fs_path=$(_ai_tool_extract_path "$args_json")
+            if [ -n "$fs_path" ]; then
+                _ai_validate_project_path "$fs_path" "run_test" || true
             fi
             ;;
     esac

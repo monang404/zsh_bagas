@@ -48,6 +48,57 @@ _ai_agent_exec_check_done_rejections() {
     if [ "$done_flag" = "true" ] && [ ${#touched_files[@]} -gt 0 ]; then
         local bad_py=""
         bad_py=$(_ai_verify_touched_files "${(k)touched_files[@]}")
+
+        # Phase 6 (audit.md §11/§20, minimal option (a)): show a
+        # "● Verify" block for the files verified this claim -- reusing
+        # the SAME $bad_py string _ai_verify_touched_files already
+        # returned above (not calling it a second time), cross-
+        # referenced per-file against a static extension->checker-name
+        # map (mirrors _ai_verify_touched_files's own case branches).
+        # Per §29's explicit warning: a file whose extension has NO
+        # checker at all (e.g. .md) must not render as a bare pass --
+        # only extensions this dispatcher actually verifies are listed
+        # here; unknown extensions are omitted from the block entirely
+        # (not shown as ✓, not shown as ✗).
+        local -a _verify_lines
+        local vf vchecker _v_bullet _v_ok _v_bad
+        if _ai_ui_supports_unicode; then
+            _v_bullet="●"; _v_ok="✓"; _v_bad="✗"
+        else
+            _v_bullet="*"; _v_ok="+"; _v_bad="x"
+        fi
+        for vf in "${(k)touched_files[@]}"; do
+            [ -f "$vf" ] || continue
+            vchecker=""
+            case "$vf" in
+                *.py)  vchecker="python3 -m py_compile $vf" ;;
+                *.zsh) vchecker="zsh -n $vf" ;;
+                *.sh)  vchecker="bash -n $vf" ;;
+                *.json) vchecker="jq empty $vf" ;;
+                *.yaml|*.yml) vchecker="python3 -c 'import yaml' $vf" ;;
+                *.js)  vchecker="node --check $vf" ;;
+                *.ts)  vchecker="tsc --noEmit --skipLibCheck $vf" ;;
+                *) continue ;;
+            esac
+            _verify_lines+=("\$ $vchecker")
+            if [[ "$bad_py" == *"$vf: "* ]]; then
+                local verr
+                verr=$(printf '%s\n' "$bad_py" | grep "^${vf}: " | head -1)
+                _verify_lines+=("${_v_bad} ${verr#${vf}: }")
+            else
+                _verify_lines+=("${_v_ok} passed")
+            fi
+        done
+        if [ "${#_verify_lines[@]}" -gt 0 ]; then
+            echo ""
+            echo "  ${_v_bullet} Verify"
+            echo ""
+            local vl
+            for vl in "${_verify_lines[@]}"; do
+                echo "    $vl"
+            done
+        fi
+
         if [ -n "$bad_py" ]; then
             echo "  [ditolak: file berikut gagal verifikasi syntax sesi ini, agent belum boleh declare selesai]"
             jq --arg a "$reply" --arg r "Kamu klaim goal ini sudah selesai, tapi file berikut gagal verifikasi syntax setelah kamu edit:

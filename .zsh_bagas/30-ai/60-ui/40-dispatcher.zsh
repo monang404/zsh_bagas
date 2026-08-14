@@ -89,12 +89,16 @@ ai() {
             fi
         fi
 
-        _ai_need_any_key || return 1
-        echo ""
-        echo "-- AI --"
-        _ai_quick "$AI_PERSONA_SHORT" "$*" fast "${AI_TASK_PROVIDER_ORDER_FAST[*]}" "" 1 "chat"
-        echo ""
-        echo "--"
-        echo ""
+        # v-fix (real bug, same root cause as aic/aicl): ini dulu duplikat
+        # manual dari _ai_quick call lama-nya aic (persona JSON-thought +
+        # raw stream ke terminal), jadi ikut kena bug "**Thought**" nempel
+        # ke jawaban -- dan kalaupun aic dibenerin, cabang ini gak ikut
+        # kebenerin karena logic-nya kepisah nyalin sendiri di sini. Ganti
+        # jadi delegate langsung ke aic() (yang sekarang render split
+        # reasoning-di-luar/jawaban-di-box): satu titik implementasi,
+        # gak ada 2 tempat yang bisa drift lagi. $@ di cabang else ini
+        # masih argumen asli utuh (belum ke-shift), persis yang tadinya
+        # dipakai "$*" buat _ai_quick, jadi perilaku input sama persis.
+        aic "$@"
     fi
 }

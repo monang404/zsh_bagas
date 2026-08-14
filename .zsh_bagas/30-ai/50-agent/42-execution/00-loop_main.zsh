@@ -32,7 +32,7 @@ _ai_agent_execute_loop() {
     local state_dir="$1" msgfile="$2" checkpoint_file="$3" goal="$4"
     local step_offset="$5" run_slug="$6" runs_logfile="$7" max_step="$8"
 
-    local step=$step_offset reply thought tool args done_flag output pdir chat_status
+    local step=$step_offset reply thought tool args done_flag output pdir chat_status args_disp
     local last_failed_tool="" last_failed_args="" same_fail_count=0 commands_run=0
     local -i last_notify_ts=0
     local block_reason=""
@@ -64,9 +64,22 @@ _ai_agent_execute_loop() {
         fi
         [ $_gp_status -eq 1 ] && break
 
+        # v-fix (UI polish, item #3+#4): blank-line polos sebelum tiap
+        # step diganti garis pemisah + "Step N/MAX" biar step baru
+        # gampang dibedain pas scroll cepat, dan user tau posisinya
+        # sekarang di mana dari batas AI_AGENT_MAX_STEPS. Cuma
+        # tampilan -- gak ngubah kondisi loop/step counter apa pun.
         echo ""
-        if [ -n "$thought" ]; then
-            _ai_log_agent_plan "Thinking..."
+        _ai_ui_step_rule "$step" "$max_step"
+        # Phase 3 (audit.md, fixes B-003): show the model's actual
+        # reasoning text (via the existing _ai_agent_reasoning_display
+        # summarizer, unchanged) instead of the literal "Thinking..."
+        # placeholder. Guarded the same way finalize.zsh already guards
+        # its own call to this helper: no output at all when $thought
+        # is empty/whitespace, so no blank reasoning line appears.
+        local _step_reasoning
+        if _step_reasoning=$(_ai_agent_reasoning_display "$thought"); then
+            _ai_ui_line "◌" "$_step_reasoning"
         fi
 
         _ai_agent_exec_check_done_rejections
@@ -95,9 +108,15 @@ _ai_agent_execute_loop() {
 
         _ai_agent_state_transition "$state_dir" EXECUTE 2>/dev/null || return 1
 
-        # Print plain text execution trace
-        _ai_log_agent_step "$step" "$tool"
-        _ai_log_agent_tool "$tool${args_disp:+ $args_disp}"
+        # Phase 0 (audit.md, fixes B-001): args_disp was read but never
+        # assigned -- populate it here via the existing (already-built,
+        # previously-uncalled) _ai_agent_args_summary helper before
+        # rendering the tool line.
+        args_disp=$(_ai_agent_args_summary "$tool" "$args")
+
+        # Phase 2: tree-style step renderer, replaces the raw
+        # [AGENT][STEP N]/[AGENT][TOOL] tag lines.
+        _ai_agent_render_step_start "$step" "$tool" "$args_disp"
 
         _ai_agent_exec_run_tool || break
 

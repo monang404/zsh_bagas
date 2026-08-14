@@ -40,11 +40,7 @@ _ai_agent_exec_log_and_notify() {
     # yang diringkas. Dicetak SEBELUM cek same_fail_count biar tetap
     # keliatan walau langkah ini yang bikin loop berhenti.
     result_disp=$(_ai_agent_result_summary "$tool" "$output" "$exit_status")
-    if [ "$exit_status" -eq 0 ]; then
-        _ai_log_agent_ok "$result_disp"
-    else
-        _ai_log_agent_error "$result_disp"
-    fi
+    _ai_agent_render_step_result "$exit_status" "$result_disp"
 
     # Task 12.2: update notifikasi progress (id tetap aiagent_progress,
     # lihat _ai_notify_progress di 10-core.zsh) SETELAH baris ✓/✗
