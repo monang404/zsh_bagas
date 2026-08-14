@@ -32,7 +32,7 @@ _ai_log_status() {
     esac
     
     # Tampilkan jika verbosity >= 1 (Level 1+) atau jika ini DONE/ERROR
-    if [ "$verbosity" -ge 1 ] || [[ "$state" == "WAIT" || "$state" == "REQUEST" || "$state" == "DONE" || "$state" == "ERROR" ]]; then
+    if [ "$verbosity" -ge 1 ] || [[ "$state" == "DONE" || "$state" == "ERROR" ]]; then
         # Jika verbosity >= 1, tambahkan detail teks jika ada
         if [ "$verbosity" -ge 1 ] && [ -n "$detail" ]; then
             text="$detail"
